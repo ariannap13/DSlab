@@ -1,11 +1,12 @@
+rm(list=ls())
 # Libraries ----
 library(stringr)
 library(readxl)
 # Directory ----
-dir <- "C:/Users/franc/Google Drive/Uni/Data Science/Data Science Lab/Dati Energia (2)"
+dir <- "C:/Users/franc/Google Drive/Uni/Data Science/Data Science Lab/Dati Energia (2)/"
 
 # U1 ----
-dir_u1 <- paste0(dir,'/',list.files(dir)[1])
+dir_u1 <- paste0(dir,list.files(dir)[1])
 
 dir_u1_18 <- paste0(dir_u1,'/',list.files(dir_u1)[1])
 dir_u1_19 <- paste0(dir_u1,'/',list.files(dir_u1)[2])
@@ -60,11 +61,16 @@ for (m in mesi_u1_20[7:12]){
   u1_2020 <- rbind(u1_2020,df)
 }
 
+# pulizia datasets
+u1_2019 = u1_2019[-which(is.na(u1_2019$POD) == T ),]
+u1_2019 = u1_2019[!duplicated(u1_2019),]
+u1_2020 = u1_2020[-which(u1_2020$DATA == 20201025 & u1_2020$CONSUMO_ATTIVA_PRELEVATA==0),]
+
 u1 = rbind(u1_2018,u1_2019,u1_2020)
 
 # U6 ----
 
-dir_u6<- paste0(dir,'/',list.files(dir)[2])
+dir_u6<- paste0(dir,list.files(dir)[2])
 
 dir_u6_18 <- paste0(dir_u6,'/',list.files(dir_u6)[1])
 dir_u6_19 <- paste0(dir_u6,'/',list.files(dir_u6)[2])
@@ -88,7 +94,7 @@ for (m in mesi_u6_18){
 # 2019
 u6_2019 <- data.frame()
 lista <- list.files(dir_u6_19)
-lista
+
 mesi_u6_19 <- as.vector(lista[c(5,4,10,2,3,9,6,7,1,12,11,14,13)])
 
 for (m in mesi_u6_19[1:11]){
@@ -111,9 +117,8 @@ for (m in mesi_u6_19[12:13]){
 # 2020
 u6_2020 <- data.frame()
 lista <- list.files(dir_u6_20)
-lista[c(6,4,12,2,11,8,10,1,16,15,14,3)]
+
 mesi_u6_20 <- lista[c(6,4,12,2,11,8,10,1,16,15,14,3)]
-mesi_u6_20
 
 for (m in mesi_u6_20[1:7]){
   f <- paste0(dir_u6_20,'/',m)
@@ -134,6 +139,11 @@ for (m in mesi_u6_20[8:12]){
   u6_2020 <- rbind(u6_2020,df)
 }
 
+#pulizia datasets
+u6_2020 = u6_2020[-which(u6_2020$DATA == 20201025 & u6_2020$CONSUMO_ATTIVA_PRELEVATA==0),]
+
 u6 = rbind(u6_2018, u6_2019, u6_2020)
 # Clear Output ----
-rm(list=setdiff(ls(), c('u1','u6')))
+setwd(dir)
+write.csv(u1,"u1.csv", row.names = FALSE)
+write.csv(u6,"u6.csv", row.names = FALSE)
