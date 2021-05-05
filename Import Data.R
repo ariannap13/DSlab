@@ -67,6 +67,7 @@ u1_2019 = u1_2019[!duplicated(u1_2019),]
 u1_2020 = u1_2020[-which(u1_2020$DATA == 20201025 & u1_2020$CONSUMO_ATTIVA_PRELEVATA==0),]
 
 u1 = rbind(u1_2018,u1_2019,u1_2020)
+u1$CONSUMO_ATTIVA_PRELEVATA = gsub(',','.',u1$CONSUMO_ATTIVA_PRELEVATA)
 
 # U6 ----
 
@@ -143,6 +144,7 @@ for (m in mesi_u6_20[8:12]){
 u6_2020 = u6_2020[-which(u6_2020$DATA == 20201025 & u6_2020$CONSUMO_ATTIVA_PRELEVATA==0),]
 
 u6 = rbind(u6_2018, u6_2019, u6_2020)
+u6$CONSUMO_ATTIVA_PRELEVATA = gsub(',','.',u6$CONSUMO_ATTIVA_PRELEVATA)
 # Clear Output ----
 setwd(dir)
 write.csv(u1,"u1.csv", row.names = FALSE)
