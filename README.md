@@ -6,4 +6,4 @@ IDEE:
 * Confronto u1 e u6 nel 2020: come nel periodo covid sono cambiati i consumi di u1 e u6 (u1 ha laboratori e quindi ci aspettiamo che consumi di più anche con covid);
 * Previsione consumi marzo-aprile 2020 senza covid e confrontare con come è andata realmente;
 * Individuazione di anomalie - integrazione con dati meteo ecc;
-* Come cambierebbero i consumi se togliessero l'ora legale?.
+* Come cambierebbero i consumi se togliessero l'ora legale?
