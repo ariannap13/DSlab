@@ -20,3 +20,8 @@ Processo:
 * valutiamo se i consumi effettivamente siano ridotti oppure no, ed eventualemnte quale sia l'entità del risparmio
 
 
+CALL CON FATTORE:
+* potential outcome e controfactual analysis ("simulo mondo che non c'è stato"
+* qualche scenario alternativo rispetto alla previsione (cambieranno anche altre abitudini delle persone sui cui però non abbiamo i dati), confronto robusto (non con troppa precisione sulle misure)
+
+
