@@ -25,3 +25,4 @@ CALL CON FATTORE:
 * qualche scenario alternativo rispetto alla previsione (cambieranno anche altre abitudini delle persone sui cui però non abbiamo i dati), confronto robusto (non con troppa precisione sulle misure)
 
 
+N.B.: codice in appendice piuttosto che in mezzo al testo (serve metterlo a quanto pare)
