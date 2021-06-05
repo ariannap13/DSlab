@@ -86,3 +86,18 @@ write.csv(data_u6,"dati_compl_u6.csv", row.names = FALSE)
 # edificio U8 (Monza, Via Cadore, 48) dalle ore 8:00 alle ore 12:30
 # In questi edifici potranno essere svolte e programmate tutte le attività didattiche.
 
+
+#open data
+setwd("/Users/Ary/Documents/Data_Science/1st_year/DSLab/Progetto")
+u1 = read.csv('dati_compl_u1.csv')
+u6 = read.csv('dati_compl_u6.csv')
+
+
+# stagionalità multipla (giorno-settimana-anno)
+u1_ts1 <- msts(u1$KWh, seasonal.periods=c(4*24,4*24*7,4*24*365))
+
+u1_ts1 %>% mstl() %>%
+  autoplot() 
+
+plot(u1_ts1)
+
