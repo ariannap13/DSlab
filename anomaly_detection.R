@@ -12,11 +12,15 @@ library(tibbletime)
 library(anomalize)
 library(timetk)
 library(dplyr)
+library(chron)
+library(tsoutliers)
+library(seastests)
+library(EnvStats)
+library(isotree)
 
 rm(list=ls())
 
 # Import data----
-
 
 setwd("/Users/Ary/Documents/Data_Science/1st_year/DSLab/Progetto/Dati Energia (2)")
 u1 = read.csv('u1.csv')
@@ -28,7 +32,6 @@ data_u1$KWh = as.numeric(gsub(',','.',u1$CONSUMO_ATTIVA_PRELEVATA))*.25
 data_u1$ora = u1$ORA
 
 # creo colonna ora_bis, trasformando in formato orario più comprensibile
-library(chron)
 data_u1$ora_bis <- data_u1$ora/100
 data_u1$ora_bis <- format(strptime(substr(as.POSIXct(sprintf("%04.0f", data_u1$ora_bis), 
                                                      format="%H%M"), 12, 16),'%H:%M'),'%H:%M:%S')
@@ -38,6 +41,9 @@ data_u1$ora_bis <- format(strptime(substr(as.POSIXct(sprintf("%04.0f", data_u1$o
 data_u1_day = data_u1 %>%
   group_by(data) %>%
   summarise(KWh = sum(KWh))
+
+
+### APPROCCIO STL
 
 # prova anomaly detection, dal sito https://www.analyticsvidhya.com/blog/2020/12/a-case-study-to-detect-anomalies-in-time-series-using-anomalize-package-in-r/
 
@@ -53,8 +59,9 @@ data_u1_day = data_u1 %>%
 data_u1_day <- as_tibble(data_u1_day)
 class(data_u1_day)
 
+# metodo twitter --> dovrebbe essere il migliore per il nostro tipo di dati
 df_anomalized <- data_u1_day %>%
-  time_decompose(KWh, method="twitter", merge = TRUE) %>%
+  time_decompose(KWh, method="twitter", frequency=365, merge = TRUE) %>%
   anomalize(remainder) %>%
   time_recompose()
 df_anomalized %>% glimpse()
@@ -63,30 +70,75 @@ df_anomalized %>% plot_anomalies(ncol = 3, alpha_dots = 0.75)
 
 p1 <- df_anomalized %>%
   plot_anomaly_decomposition() +
-  ggtitle("Freq/Trend = 'auto'")
+  ggtitle("Freq = 365, Trend = 'auto'")
 p1 #decomposizione in osservato, stagionale, residui ecc
 
-
 table <- data_u1_day %>% 
-  time_decompose(KWh, method="twitter") %>%
+  time_decompose(KWh, method="twitter", frequency=365) %>%
   anomalize(remainder) %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
-# 15 anomalie
+# 8 anomalie
+
+# metodo stl --> prova comunque
+df_anomalized1 <- data_u1_day %>%
+  time_decompose(KWh, method="stl", frequency=365, merge = TRUE) %>%
+  anomalize(remainder) %>%
+  time_recompose()
+df_anomalized1 %>% glimpse()
+
+df_anomalized1 %>% plot_anomalies(ncol = 3, alpha_dots = 0.75)
+
+p1 <- df_anomalized1 %>%
+  plot_anomaly_decomposition() +
+  ggtitle("Freq = 365, Trend = 'auto'")
+p1 #decomposizione in osservato, stagionale, residui ecc
+
+
+# metodo twitter, cambio ampiezza intervallo di confidenza per identificare outliers
 
 # cambiando alpha, ottengono più o meno outlier (alfa maggiore, si restringe l'intervallo di normalità attorno alla serie)
+# se alpha ampio (quasi tutto è un outlier) posso giocare su percentuale max outliers da identificare nel dataset
+
+# quasi tutto è outlier, gioco su max percentuale outliers nei dati
 p4 <- data_u1_day %>%
-  time_decompose(KWh, method="twitter") %>%
-  anomalize(remainder, alpha = 0.05, max_anoms = 0.3) %>%
+  time_decompose(KWh, method="twitter", frequency=365) %>%
+  anomalize(remainder, alpha = 0.3, max_anoms = 0.05) %>%
   time_recompose() %>%
   plot_anomalies(time_recomposed = TRUE) +
-  ggtitle("alpha = 0.05")
+  ggtitle("alpha = 0.3, max_anoms=5%")
 p4
 
+# con alpha=0.09, intervalli di normalità più stretti
+p5 <- data_u1_day %>%
+  time_decompose(KWh, method="twitter", frequency=365) %>%
+  anomalize(remainder, alpha = 0.09, max_anoms = 0.3) %>%
+  time_recompose() %>%
+  plot_anomalies(time_recomposed = TRUE) +
+  ggtitle("alpha = 0.09, max_anoms=30%")
+p5
 
-## approccio ARIMA
+# con alpha=0.07, intervalli di normalità più ampi
+p6 <- data_u1_day %>%
+  time_decompose(KWh, method="twitter", frequency=365) %>%
+  anomalize(remainder, alpha = 0.07, max_anoms = 0.3) %>%
+  time_recompose() %>%
+  plot_anomalies(time_recomposed = TRUE) +
+  ggtitle("alpha = 0.07, max_anoms=30%")
+p6
 
-library(tsoutliers)
+# tabella con date outliers (riferimento alpha=0.09)
+table1 <- data_u1_day %>% 
+  time_decompose(KWh, method="twitter", frequency=365) %>%
+  anomalize(remainder, alpha = 0.09, max_anoms = 0.3) %>%
+  time_recompose() %>%
+  filter(anomaly == 'Yes')
+# date identificate come giorni anomali
+dates_anomalize <- table1$data
+
+### APPROCCIO ARIMA
+
+## si studia inizialmente la stagionalità della serie
 
 # prova serie multistagionalità 
 u1_ts <- msts(data_u1_day$KWh, seasonal.periods=c(7,30,365))
@@ -100,153 +152,119 @@ u1_ts
 
 plot(u1_ts,lwd=2,ylab="KWh")
 
+# decomposizione serie in osservata, trend, stagionalità e residui
 stl <- decompose(u1_ts)
 seasonal(stl)
-
 plot(stl)
 
-# uso moving average per separare l'effetto del trend da quello della stagionalità
-u1_trend <- forecast::ma(u1_ts,365)
-u1_detrend <- u1_ts/u1_trend
-
-plot(u1_ts,lwd=2,ylab="KWh")+
-  lines(u1_trend,col="red",lwd=3)
+# test seasonality - da rivedere 
+summary(wo(u1_ts))
+summary(qs(u1_ts))
+kruskal.test(KWh ~ data, data=data_u1_day)
+friedman.test(data_u1_day)
 
 
 # pacchetto tsoutliers con fitting automatico modello arima
-outliers_u1_ts <- tso(u1_ts, types = c("TC", "AO", "LS", "IO", "SLS"), tsmethod="auto.arima")
-outliers_u1_ts
+
+# PROVARE SE FUNZIONA (ad Arianna no)
+outliers_u1_ts <- tso(u1_ts, types = c("TC", "AO", "LS", "IO", "SLS"))
+outliers_u1_ts 
 
 plot.tsoutliers(outliers_u1_ts)
 
+# indici outliers
 list_ind <- outliers_u1_ts$outliers$ind
 
+# tabella con elementi anomali
 out <- data_u1_day[list_ind,]
 out
 
 
-# ets
 
-mod_ets <- ets(u1_ts)
-summary(mod_ets)
-autoplot(mod_ets)
+### APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza
 
-fitted <- mod_ets$fitted
+mod_tbats <- tbats(u1_ts)
+mod_tbats
+
+fitted <- mod_tbats$fitted.values
 
 #create data frame with date and KWh for ets model
 df <- data.frame(data = data_u1_day$data)
 df$KWh <- fitted
-
 
 ggplot() + 
   geom_line(data = data_u1_day, aes(x = data, y = KWh), color = "red") +
   geom_line(data = df, aes(x = data, y = KWh), color = "blue") +
   xlab('date') +
   ylab('KWh')
-# come individuiamo anomalie osservando il grafico?
+
+df_errors <- data.frame(data = data_u1_day$data)
+df_errors$error <- mod_tbats$errors
+
+# voglio selezionare come ouliers solo il 2% dei dati
+summary(abs(df_errors$error))
+quantile(abs(df_errors$error), probs=seq(0,1,0.02))
+# 98% corrisponde a 434.81
+
+# definiscon come outliers le osservazioni che hanno un errore associato maggiore di 500 in valore assoluto
+table_tbats <- data_u1_day[which(abs(as.numeric(df_errors$error)) > 434.81), c("data","KWh")]
+dates_tbats <- table_tbats$data
+
+# metodo generalized extreme Studentized deviate test per identificare outliers
+df <- data.frame(data = data_u1_day$data)
+df$observed <- data_u1_day$KWh
+df$fitted <- fitted
+df$residuals <- mod_tbats$errors
+
+# il metodo è costruito per riconoscere al massimo 10 outliers
+rosner_test <- rosnerTest(df$residuals, k = 10, alpha = 0.05, warn = TRUE)
+num_oss <- rosner_test$all.stats$Obs.Num
+
+# tabella con outliers
+table_tbats_test <- data_u1_day[num_oss,]
+dates_tbats_test <- table_tbats_test$data
 
 
-# CART
+### APPROCCIO CART
+
 # algoritmo isolation forest (decision trees), non usa misure di distanza o densità 
 # ma considera solo il fatto che le anomalie sono solitamente poche e abbastanza diverse 
 # dagli altri dati
 
-library(isotree)
-
-# train modello 
+# modello 
 iso <- isolation.forest(data_u1_day)
 
-#predict outliers within dataset, soglia score outliers=0.55
+# predict outliers within dataset, soglia score outliers=0.6 (valori vicini a 1 sono outliers
+# forti, vicini a 0.5 sono outliers nella media e vicino a 0 valori più normali/difficili da isolare)
 data_u1_day$pred <- predict(iso, data_u1_day, type = "score")
-data_u1_day$outlier <- as.factor(ifelse(data_u1_day$pred >=0.55, "outlier", "normal"))
+data_u1_day$outlier <- as.factor(ifelse(data_u1_day$pred >= 0.6, "outlier", "normal"))
 table(data_u1_day$outlier)
 
 #plot
-ggplot(data_u1_day, aes(x = data, y = KWh, color = outlier)) + 
-  geom_point(shape = 1, alpha = 0.5) +
+d <- ggplot(data_u1_day, aes(x = data, y = KWh)) + 
+  geom_line(color="gray81")+
+  geom_point(shape = 20, alpha = 0.5, aes(color=outlier)) +
   labs(x = "x", y = "y") +
   labs(alpha = "", colour="Legend")
+d + scale_color_manual(values=c("gray81", "red3"))
+
+# tabella e date outliers
+table_out_cart <- data_u1_day[which(data_u1_day$outlier=="outlier"),]
+dates_cart <- table_out_cart$data
+
+
+# compare anomalies (daily data)
+
+dates_anomalize
+dates_tbats
+dates_tbats_test
+dates_cart
+
+# date in comune agli algoritmi --->
+# giorno 4/08/18
+# giorno 21/06/20
+# giorno 31/07/20
+# (comunque i periodi di riferimento rimangono abbatanza simili)
 
 
 
-
-### PROVA DATI SETTIMANALI
-
-# by week
-data_u1_week = data_u1_day %>%
-  group_by(data=floor_date(data, "week")) %>%
-  summarise(KWh = sum(KWh))
-
-data_u1_week <- as_tibble(data_u1_week)
-class(data_u1_week)
-
-df_anomalized <- data_u1_week %>%
-  time_decompose(KWh, method="twitter", merge = TRUE) %>%
-  anomalize(remainder) %>%
-  time_recompose()
-df_anomalized %>% glimpse()
-
-df_anomalized %>% plot_anomalies(ncol = 3, alpha_dots = 0.75) #solo una settimana anomala a fine 2018
-
-p1 <- df_anomalized %>%
-  plot_anomaly_decomposition() +
-  ggtitle("Freq/Trend = 'auto'")
-p1 #decomposizione in osservato, stagionale, residui ecc
-
-
-table <- data_u1_week %>% 
-  time_decompose(KWh, method="twitter") %>%
-  anomalize(remainder) %>%
-  time_recompose() %>%
-  filter(anomaly == 'Yes')
-# inizia il 23/12/18
-
-# cambiando alpha, ottengono più o meno outlier (alfa maggiore, si restringe l'intervallo di normalità attorno alla serie)
-p4 <- data_u1_week %>%
-  time_decompose(KWh, method="twitter") %>%
-  anomalize(remainder, alpha = 0.08, max_anoms = 0.3) %>%
-  time_recompose() %>%
-  plot_anomalies(time_recomposed = TRUE) +
-  ggtitle("alpha = 0.08")
-p4
-
-data_u1_week %>% 
-  time_decompose(KWh, method="twitter") %>%
-  anomalize(remainder, alpha = 0.08, max_anoms = 0.3) %>%
-  time_recompose() %>%
-  filter(anomaly == 'Yes')
-
-# settimana del 23/12/18 e settimana del 21/07/19
-
-
-## approccio ARIMA
-
-library(tsoutliers)
-
-# prova serie multistagionalità 
-u1_wts <- msts(data_u1_week$KWh, seasonal.periods=c(4,52))
-u1_wts %>% mstl() %>%
-  autoplot() 
-# sembra esserci solo stagionalità annuale, si utilizza serie che ha frequency 52
-
-# frequency indica il numero di osservazioni prima che il pattern si ripeta, nel nostro caso 52
-u1_wts <- ts(data_u1_week$KWh, frequency=52, start=c(2018,1,1))
-u1_wts
-
-plot(u1_wts,lwd=2,ylab="KWh")
-
-stl <- decompose(u1_wts)
-seasonal(stl)
-
-plot(stl)
-
-# pacchetto tsoutliers con fitting automatico modello arima
-outliers_u1_wts <- tso(u1_wts, types = c("TC", "AO", "LS", "IO", "SLS"), tsmethod="auto.arima")
-outliers_u1_wts
-
-plot.tsoutliers(outliers_u1_wts)
-
-list_ind <- outliers_u1_wts$outliers$ind
-
-out <- data_u1_week[list_ind,]
-out #prima settimana 2018, settimana 3/06/18, settimana 5/08/19, settimana 2/06/19, settimana 21/07/19
