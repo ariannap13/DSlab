@@ -23,3 +23,4 @@ LINK UTILI:
 * Outliers detection con algo isolation forest (CART): https://www.kaggle.com/norealityshows/outlier-detection-with-isolation-forest-in-r
 * Prophet API per R: https://facebook.github.io/prophet/docs/quick_start.html#r-api
 * Anomaly detection con Prophet in R: https://rstats-tips.net/2021/01/01/anomaly-detection-with-prophet/
+* Analisi delle serie storiche con R (link vari): https://www.performancetrading.it/Documents/VrAnalisi/VrA_Verifica_trend.htm
