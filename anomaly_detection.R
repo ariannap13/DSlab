@@ -43,6 +43,57 @@ data_u1_day = data_u1 %>%
   summarise(KWh = sum(KWh))
 
 
+# studio della stagionalità
+
+u1_ts <- ts(data_u1_day$KWh, frequency=365, start=c(2018,1,1))
+stl <- decompose(u1_ts)
+#seasonal(stl)
+plot(stl)
+
+# modello con stagionalità annuale
+mod_tbats <- tbats(u1_ts)
+mod_tbats
+
+# modello con stagionalità multipla - settimana, mese, anno
+u1_msts <- msts(data_u1_day$KWh, seasonal.periods=c(7,30,365))
+u1_msts %>% mstl() %>%
+  autoplot() 
+mod_tbats_ms <- tbats(u1_msts)
+mod_tbats_ms
+
+# modello con stagionalità multipla - settimana, anno
+u1_msts1 <- msts(data_u1_day$KWh, seasonal.periods=c(7,365))
+u1_msts1 %>% mstl() %>%
+  autoplot() 
+mod_tbats_ms1 <- tbats(u1_msts1)
+mod_tbats_ms1 #output migliore dei precedenti (rispetto a AIC)
+
+# modello con stagionalità multipla - mese, anno
+u1_msts2 <- msts(data_u1_day$KWh, seasonal.periods=c(30,365))
+u1_msts2 %>% mstl() %>%
+  autoplot() 
+mod_tbats_ms2 <- tbats(u1_msts2)
+mod_tbats_ms2 #output peggiore dei due precedenti
+
+# modello con stagionalità multipla - settimana, mese
+u1_msts3 <- msts(data_u1_day$KWh, seasonal.periods=c(7,30))
+u1_msts3 %>% mstl() %>%
+  autoplot() 
+mod_tbats_ms3 <- tbats(u1_msts3)
+mod_tbats_ms3 #output non ottimale
+
+# Dai risultati osservati, sembrerebbe esserci una stagionalità multipla settimanale+annuale
+
+# E' più importante stagionalità annuale o settimanale? Confronto modelli con stagionalità singola
+
+# modello con stagionalità singola - settimana
+u1_ts_w <- ts(data_u1_day$KWh, frequency=7, start=c(2018,1,1))
+mod_tbats_ts_w <- tbats(u1_ts_w)
+mod_tbats_ts_w # settimana
+mod_tbats # anno
+# stagionalità settimanale ha AIC più basso --> più importante
+
+
 ### APPROCCIO STL
 
 # prova anomaly detection, dal sito https://www.analyticsvidhya.com/blog/2020/12/a-case-study-to-detect-anomalies-in-time-series-using-anomalize-package-in-r/
@@ -59,9 +110,15 @@ data_u1_day = data_u1 %>%
 data_u1_day <- as_tibble(data_u1_day)
 class(data_u1_day)
 
+# Nella funzione time_decompose, bisogna scegliere frequency = numero di osservazioni in un ciclo. 
+# Nel nostro caso, modello migliore è con stagionalità multipla settimanale e annuale, 
+# dovendo sceglierne solo una si sceglie la più importante --> settimanale
+
 # metodo twitter --> dovrebbe essere il migliore per il nostro tipo di dati
 df_anomalized <- data_u1_day %>%
-  time_decompose(KWh, method="twitter", frequency=365, merge = TRUE) %>%
+  # dicendo che frequency = "1 week" il metodo automaticamente capisce se i dati
+  # hanno una frequenza di 5 o 7 giorni a seconda dei dati a disposizione
+  time_decompose(KWh, method="twitter", frequency="1 week", merge = TRUE) %>%
   anomalize(remainder) %>%
   time_recompose()
 df_anomalized %>% glimpse()
@@ -70,19 +127,19 @@ df_anomalized %>% plot_anomalies(ncol = 3, alpha_dots = 0.75)
 
 p1 <- df_anomalized %>%
   plot_anomaly_decomposition() +
-  ggtitle("Freq = 365, Trend = 'auto'")
+  ggtitle("Freq = week, Trend = 'auto'")
 p1 #decomposizione in osservato, stagionale, residui ecc
 
 table <- data_u1_day %>% 
-  time_decompose(KWh, method="twitter", frequency=365) %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
   anomalize(remainder) %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
-# 8 anomalie
+# 15 anomalie
 
-# metodo stl --> prova comunque
+# metodo stl --> prova anche se sembra più adatto metodo twitter
 df_anomalized1 <- data_u1_day %>%
-  time_decompose(KWh, method="stl", frequency=365, merge = TRUE) %>%
+  time_decompose(KWh, method="stl", frequency="1 week", merge = TRUE) %>%
   anomalize(remainder) %>%
   time_recompose()
 df_anomalized1 %>% glimpse()
@@ -91,7 +148,7 @@ df_anomalized1 %>% plot_anomalies(ncol = 3, alpha_dots = 0.75)
 
 p1 <- df_anomalized1 %>%
   plot_anomaly_decomposition() +
-  ggtitle("Freq = 365, Trend = 'auto'")
+  ggtitle("Freq = week, Trend = 'auto'")
 p1 #decomposizione in osservato, stagionale, residui ecc
 
 
@@ -102,7 +159,7 @@ p1 #decomposizione in osservato, stagionale, residui ecc
 
 # quasi tutto è outlier, gioco su max percentuale outliers nei dati
 p4 <- data_u1_day %>%
-  time_decompose(KWh, method="twitter", frequency=365) %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
   anomalize(remainder, alpha = 0.3, max_anoms = 0.05) %>%
   time_recompose() %>%
   plot_anomalies(time_recomposed = TRUE) +
@@ -111,7 +168,7 @@ p4
 
 # con alpha=0.09, intervalli di normalità più stretti
 p5 <- data_u1_day %>%
-  time_decompose(KWh, method="twitter", frequency=365) %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
   anomalize(remainder, alpha = 0.09, max_anoms = 0.3) %>%
   time_recompose() %>%
   plot_anomalies(time_recomposed = TRUE) +
@@ -120,48 +177,27 @@ p5
 
 # con alpha=0.07, intervalli di normalità più ampi
 p6 <- data_u1_day %>%
-  time_decompose(KWh, method="twitter", frequency=365) %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
   anomalize(remainder, alpha = 0.07, max_anoms = 0.3) %>%
   time_recompose() %>%
   plot_anomalies(time_recomposed = TRUE) +
   ggtitle("alpha = 0.07, max_anoms=30%")
 p6
 
-# tabella con date outliers (riferimento alpha=0.09)
+# tabella con date outliers (riferimento alpha=0.05)
 table1 <- data_u1_day %>% 
-  time_decompose(KWh, method="twitter", frequency=365) %>%
-  anomalize(remainder, alpha = 0.09, max_anoms = 0.3) %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.3) %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
 # date identificate come giorni anomali
 dates_anomalize <- table1$data
 
+
 ### APPROCCIO ARIMA
 
-## si studia inizialmente la stagionalità della serie
-
-# prova serie multistagionalità 
-u1_ts <- msts(data_u1_day$KWh, seasonal.periods=c(7,30,365))
-u1_ts %>% mstl() %>%
-  autoplot() 
-# sembra esserci solo stagionalità annuale, si utilizza serie che ha frequency 365 (capire se è il metodo corretto)
-
-# frequency indica il numero di osservazioni prima che il pattern si ripeta, nel nostro caso 365
-u1_ts <- ts(data_u1_day$KWh, frequency=365, start=c(2018,1,1))
-u1_ts
-
+# plot serie temporale
 plot(u1_ts,lwd=2,ylab="KWh")
-
-# decomposizione serie in osservata, trend, stagionalità e residui
-stl <- decompose(u1_ts)
-seasonal(stl)
-plot(stl)
-
-# test seasonality - da rivedere 
-summary(wo(u1_ts))
-summary(qs(u1_ts))
-kruskal.test(KWh ~ data, data=data_u1_day)
-friedman.test(data_u1_day)
 
 
 # pacchetto tsoutliers con fitting automatico modello arima
@@ -183,10 +219,11 @@ out
 
 ### APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza
 
-mod_tbats <- tbats(u1_ts)
-mod_tbats
+# considero multistagionalità settimanale e annuale
+mod_tbats_ms <- tbats(u1_msts1)
+mod_tbats_ms
 
-fitted <- mod_tbats$fitted.values
+fitted <- mod_tbats_ms$fitted.values
 
 #create data frame with date and KWh for ets model
 df <- data.frame(data = data_u1_day$data)
@@ -199,26 +236,28 @@ ggplot() +
   ylab('KWh')
 
 df_errors <- data.frame(data = data_u1_day$data)
-df_errors$error <- mod_tbats$errors
+df_errors$error <- mod_tbats_ms$errors
 
 # voglio selezionare come ouliers solo il 2% dei dati
 summary(abs(df_errors$error))
 quantile(abs(df_errors$error), probs=seq(0,1,0.02))
-# 98% corrisponde a 434.81
+# 98% corrisponde a 437.91
 
 # definiscon come outliers le osservazioni che hanno un errore associato maggiore di 500 in valore assoluto
-table_tbats <- data_u1_day[which(abs(as.numeric(df_errors$error)) > 434.81), c("data","KWh")]
+table_tbats <- data_u1_day[which(abs(as.numeric(df_errors$error)) > 437.91), c("data","KWh")]
 dates_tbats <- table_tbats$data
 
 # metodo generalized extreme Studentized deviate test per identificare outliers
 df <- data.frame(data = data_u1_day$data)
 df$observed <- data_u1_day$KWh
 df$fitted <- fitted
-df$residuals <- mod_tbats$errors
+df$residuals <- mod_tbats_ms$errors
 
-# il metodo è costruito per riconoscere al massimo 10 outliers
-rosner_test <- rosnerTest(df$residuals, k = 10, alpha = 0.05, warn = TRUE)
-num_oss <- rosner_test$all.stats$Obs.Num
+# il metodo è costruito considerando un upper bound per il numero di outliers che ci si aspetta
+library(PMCMRplus)
+gesd <- gesdTest(df$residuals, 20)
+num_oss <- gesd$ix
+data_u1_day[num_oss,]
 
 # tabella con outliers
 table_tbats_test <- data_u1_day[num_oss,]
