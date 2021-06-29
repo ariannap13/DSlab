@@ -1,4 +1,6 @@
 # Libraries & Functions ----
+rm(list=ls())
+
 library(ggplot2)
 library(lmtest)
 library(forecast)
@@ -18,7 +20,6 @@ library(seastests)
 library(EnvStats)
 library(isotree)
 
-rm(list=ls())
 
 # Import data----
 
@@ -199,22 +200,42 @@ dates_anomalize <- table1$data
 # plot serie temporale
 plot(u1_ts,lwd=2,ylab="KWh")
 
-
 # pacchetto tsoutliers con fitting automatico modello arima
 
-# PROVARE SE FUNZIONA (ad Arianna no)
-outliers_u1_ts <- tso(u1_ts, types = c("TC", "AO", "LS", "IO", "SLS"))
-outliers_u1_ts 
+# dovendo considerare una multi stagionalità, se si vuole utilizzare il modello arima
+# è necessaria l'introduzione di termini di fourier come xreg
 
-plot.tsoutliers(outliers_u1_ts)
+# identifico numero di termini di fourier
+bestfit <- list(aicc=Inf)
+for(i in 1:25)
+{
+  fit <- auto.arima(u1_msts1, xreg=fourier(u1_msts1, K=c(i,i)), seasonal=FALSE)
+  if(fit$aicc < bestfit$aicc)
+    {best_k <- i
+    bestfit <- fit}
+  else break;
+}
+
+
+# PROVARE SE FUNZIONA (ad Arianna no)
+outliers_u1_msts <- tso(u1_msts1, xreg=fourier(u1_msts1, K=c(3,3)), types = c("TC", "AO", "LS", "IO", "SLS"))
+outliers_u1_msts 
+
+
+#u1_msts1
+#prova1 <- tso(u1_msts1)
+#plot.tsoutliers(prova1)
+
+plot.tsoutliers(outliers_u1_msts)
 
 # indici outliers
-list_ind <- outliers_u1_ts$outliers$ind
+list_ind <- outliers_u1_msts$outliers$ind
 
 # tabella con elementi anomali
 out <- data_u1_day[list_ind,]
 out
 
+dates_tso <- out$data
 
 
 ### APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza
@@ -298,6 +319,7 @@ dates_anomalize
 dates_tbats
 dates_tbats_test
 dates_cart
+dates_tso
 
 # date in comune agli algoritmi --->
 # giorno 4/08/18
