@@ -225,7 +225,7 @@ for (i in 1:3) {# weekly cycle
 }
 bestfourier # (3,2)
 
-# PROVARE SE FUNZIONA (ad Arianna no)
+# PROVARE SE FUNZIONA
 outliers_u6_msts <- tso(u6_msts1, xreg=fourier(u6_msts1, K=c(3,2)), types = c("TC", "AO", "LS", "IO", "SLS"))
 outliers_u6_msts 
 
@@ -237,6 +237,12 @@ list_ind <- outliers_u6_msts$outliers$ind
 # tabella con elementi anomali
 out <- data_u6_day[list_ind,]
 out
+
+# save table output 
+write.csv(out,"tso_table_u6.csv")
+
+
+
 
 dates_tso <- out$data
 
@@ -253,11 +259,16 @@ fitted <- mod_tbats_ms$fitted.values
 df <- data.frame(data = data_u6_day$data)
 df$KWh <- fitted
 
+colors <- c("Fitted values" = "blue", "Real values" = "darkorange1")
+
 ggplot() + 
-  geom_line(data = data_u6_day, aes(x = data, y = KWh), color = "red") +
-  geom_line(data = df, aes(x = data, y = KWh), color = "blue") +
-  xlab('date') +
-  ylab('KWh')
+  geom_line(data = data_u6_day, aes(x = data, y = KWh, color = "Real values")) +
+  geom_line(data = df, aes(x = data, y = KWh, color = "Fitted values")) +
+  labs(x = "date",
+       y = "KWh",
+       color = "Legend") +
+  scale_color_manual(values = colors)
+
 
 df_errors <- data.frame(data = data_u6_day$data)
 df_errors$error <- mod_tbats_ms$errors
@@ -297,7 +308,7 @@ dates_tbats_test <- table_tbats_test$data
 # modello 
 iso <- isolation.forest(data_u6_day)
 
-# predict outliers within dataset, soglia score outliers=0.6 (valori vicini a 1 sono outliers
+# predict outliers within dataset, soglia score outliers=0.57 (valori vicini a 1 sono outliers
 # forti, vicini a 0.5 sono outliers nella media e vicino a 0 valori più normali/difficili da isolare)
 data_u6_day$pred <- predict(iso, data_u6_day, type = "score")
 data_u6_day$outlier <- as.factor(ifelse(data_u6_day$pred >= 0.57, "outlier", "normal"))
@@ -307,7 +318,7 @@ table(data_u6_day$outlier)
 d <- ggplot(data_u6_day, aes(x = data, y = KWh)) + 
   geom_line(color="gray81")+
   geom_point(shape = 20, alpha = 0.5, aes(color=outlier)) +
-  labs(x = "x", y = "y") +
+  labs(x = "date", y = "KWh") +
   labs(alpha = "", colour="Legend")
 d + scale_color_manual(values=c("gray81", "red3"))
 

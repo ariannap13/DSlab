@@ -227,7 +227,7 @@ for (i in 1:3) {# weekly cycle
 }
 bestfourier # (1,1)
 
-# PROVARE SE FUNZIONA (ad Arianna no)
+# PROVARE SE FUNZIONA
 outliers_u1_msts <- tso(u1_msts1, xreg=fourier(u1_msts1, K=c(1,1)), types = c("TC", "AO", "LS", "IO", "SLS"))
 outliers_u1_msts 
 
@@ -245,6 +245,10 @@ list_ind <- outliers_u1_msts$outliers$ind
 out <- data_u1_day[list_ind,]
 out
 
+# save table output 
+write.csv(out,"tso_table_u1.csv")
+
+
 dates_tso <- out$data
 
 
@@ -260,11 +264,15 @@ fitted <- mod_tbats_ms$fitted.values
 df <- data.frame(data = data_u1_day$data)
 df$KWh <- fitted
 
+colors <- c("Fitted values" = "blue", "Real values" = "darkorange1")
+
 ggplot() + 
-  geom_line(data = data_u1_day, aes(x = data, y = KWh), color = "red") +
-  geom_line(data = df, aes(x = data, y = KWh), color = "blue") +
-  xlab('date') +
-  ylab('KWh')
+  geom_line(data = data_u1_day, aes(x = data, y = KWh, color = "Real values")) +
+  geom_line(data = df, aes(x = data, y = KWh, color = "Fitted values")) +
+  labs(x = "date",
+       y = "KWh",
+       color = "Legend") +
+  scale_color_manual(values = colors)
 
 df_errors <- data.frame(data = data_u1_day$data)
 df_errors$error <- mod_tbats_ms$errors
@@ -314,7 +322,7 @@ table(data_u1_day$outlier)
 d <- ggplot(data_u1_day, aes(x = data, y = KWh)) + 
   geom_line(color="gray81")+
   geom_point(shape = 20, alpha = 0.5, aes(color=outlier)) +
-  labs(x = "x", y = "y") +
+  labs(x = "date", y = "KWh") +
   labs(alpha = "", colour="Legend")
 d + scale_color_manual(values=c("gray81", "red3"))
 
