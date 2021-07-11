@@ -19,7 +19,8 @@ library(tsoutliers)
 library(seastests)
 library(EnvStats)
 library(isotree)
-
+library(stats)
+library(cluster)
 
 # Import data----
 
@@ -37,8 +38,7 @@ data_u1$ora_bis <- data_u1$ora/100
 data_u1$ora_bis <- format(strptime(substr(as.POSIXct(sprintf("%04.0f", data_u1$ora_bis), 
                                                      format="%H%M"), 12, 16),'%H:%M'),'%H:%M:%S')
 
-# Aggregazione ----
-# by day
+# Aggregazione by day
 data_u1_day = data_u1 %>%
   group_by(data) %>%
   summarise(KWh = sum(KWh))
@@ -95,7 +95,7 @@ mod_tbats # anno
 # stagionalità settimanale ha AIC più basso --> più importante
 
 
-### APPROCCIO STL
+### APPROCCIO STL ----
 
 # prova anomaly detection, dal sito https://www.analyticsvidhya.com/blog/2020/12/a-case-study-to-detect-anomalies-in-time-series-using-anomalize-package-in-r/
 
@@ -194,65 +194,7 @@ table1 <- data_u1_day %>%
 # date identificate come giorni anomali
 dates_anomalize <- table1$data
 
-
-### APPROCCIO ARIMA
-
-# plot serie temporale
-plot(u1_ts,lwd=2,ylab="KWh")
-
-# pacchetto tsoutliers con fitting automatico modello arima
-
-# dovendo considerare una multi stagionalità, se si vuole utilizzare il modello arima
-# è necessaria l'introduzione di termini di fourier come xreg
-
-# identifico numero di termini di fourier
-bestfit <- list(aicc=Inf)
-
-# of transforms i should be less than half of seasonal period.
-
-for (i in 1:3) {# weekly cycle
-  for (j in 1:5) { #yearly cycle
-    #specifying the fourier temrs
-    myfourier <- c(i,j)
-    xregressors <- fourier(u1_msts1, K=myfourier)
-    #fitting the model
-    fit_model <- auto.arima(y = u1_msts1, seasonal = FALSE, xreg = xregressors, stepwise = TRUE, lambda = "auto")
-    #better model has lower aicc
-    if (fit_model$aicc < bestfit$aicc) {
-      bestfit <- fit_model
-      bestfourier <- myfourier
-    }
-    #else break;
-  }
-}
-bestfourier # (1,1)
-
-# PROVARE SE FUNZIONA
-outliers_u1_msts <- tso(u1_msts1, xreg=fourier(u1_msts1, K=c(1,1)), types = c("TC", "AO", "LS", "IO", "SLS"))
-outliers_u1_msts 
-
-
-#u1_msts1
-#prova1 <- tso(u1_msts1)
-#plot.tsoutliers(prova1)
-
-plot.tsoutliers(outliers_u1_msts)
-
-# indici outliers
-list_ind <- outliers_u1_msts$outliers$ind
-
-# tabella con elementi anomali
-out <- data_u1_day[list_ind,]
-out
-
-# save table output 
-write.csv(out,"tso_table_u1.csv")
-
-
-dates_tso <- out$data
-
-
-### APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza
+### APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza ----
 
 # considero multistagionalità settimanale e annuale
 mod_tbats_ms <- tbats(u1_msts1)
@@ -303,7 +245,7 @@ table_tbats_test <- data_u1_day[num_oss,]
 dates_tbats_test <- table_tbats_test$data
 
 
-### APPROCCIO CART
+### APPROCCIO CART ----
 
 # algoritmo isolation forest (decision trees), non usa misure di distanza o densità 
 # ma considera solo il fatto che le anomalie sono solitamente poche e abbastanza diverse 
@@ -345,5 +287,80 @@ dates_tso
 # giorno 31/07/20
 # (comunque i periodi di riferimento rimangono abbatanza simili)
 
+### APPROCCIO K-MEANS ----
+
+set.seed(123)
+ 
+wth = vector()
+sil = vector()
+kmax = 15
+for (k in 2:kmax) {
+  km = kmeans(as.data.frame(data_u1_day)[,2], k)
+  wth[k-1] = km$tot.withinss
+  ss = silhouette(km$cluster, dist(as.data.frame(data_u1_day)[,2]))
+  sil[k-1] = mean(ss[,3])
+}
+df = data.frame(k = 2:15, wth, sil)
 
 
+el_plot = ggplot(data = df, aes(y = wth, x = k))+
+  geom_line()+
+  geom_point()+
+  theme_classic()+
+  scale_x_continuous(name = "Number of clusters K",
+                     breaks = seq(2,15,1))+
+  scale_y_continuous(name = "Total within-clusters sum of squares",
+                     labels = comma,
+                     breaks = seq(0,60000000,10000000))+
+  labs(title = 'Optimal number of clusters', subtitle = 'Elbow method')
+
+sil_plot = ggplot(data = df, aes(y = sil, x = k))+
+  geom_line()+
+  geom_point()+
+  theme_classic()+
+  scale_x_continuous(name = "Number of clusters K",
+                     breaks = seq(2,15,1))+
+  scale_y_continuous(name = "Average Silhouettes")+
+  labs(title = 'Optimal number of clusters', subtitle = 'Silhouette method')
+
+grid.arrange(el_plot,sil_plot, nrow =1)
+
+cluster = kmeans(as.data.frame(data_u1_day)[,2], 5)
+data_u1_day_center = cbind(as.data.frame(data_u1_day), cluster = cluster$cluster)
+
+x = vector()
+for (i in 1:nrow(data_u1_day_center)) {
+  if (data_u1_day_center[i,3] == 1) {
+    x[i] = cluster$centers[1]
+  } else if (data_u1_day_center[i,3] == 2) {
+    x[i] = cluster$centers[2]
+  } else if (data_u1_day_center[i,3] == 3) {
+    x[i] = cluster$centers[3]
+  } else if (data_u1_day_center[i,3] == 4) {
+    x[i] = cluster$centers[4]
+  } else if (data_u1_day_center[i,3] == 5) {
+    x[i] = cluster$centers[5]
+  }
+}
+
+data_u1_day_center = cbind(data_u1_day_center, center = x)
+
+data_u1_day_center$dist = apply(data_u1_day_center[,c(2,4)], 1, dist)
+
+temp = data_u1_day_center %>%
+  arrange(desc(dist))
+
+outlier_fraction = 0.04
+temp2 = temp[1:round(nrow(temp)*outlier_fraction),]
+nrow(temp2)
+
+ggplot()+
+  geom_line(data = data_u1_day, aes(x = as.Date(data), y = KWh), size = 0.7)+
+  geom_point(data = temp2, aes(x = as.Date(data), y = KWh), color = 'red')+
+  theme_classic()+
+  scale_x_date(breaks=breaks_width("6 month"),
+               labels=date_format("%b %y"))+
+  theme(axis.text.x=element_text(angle=50, vjust=.7))+
+  labs(title = 'Anomaly detection', subtitle = 'k-means method')+
+  xlab(element_blank())+
+  scale_y_continuous(breaks = seq(0,3000,500))
