@@ -3,9 +3,6 @@
 DA FARE:
 
 - aggiungere nel file anomaly_detection_u1_def la parte di analisi esplorativa (residui e autocorrelazione)
-- togliere dal mese di giugno 2020 compreso nel file di analisi u6
-- ripetere le analisi dell'u1 anche per u6
-- creare grafico (istogramma) finale per paragonare gli outliers trovati
 
 
 
