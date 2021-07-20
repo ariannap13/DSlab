@@ -15,12 +15,14 @@ library(anomalize)
 library(timetk)
 library(dplyr)
 library(chron)
-library(tsoutliers)
 library(seastests)
 library(EnvStats)
 library(isotree)
 library(stats)
 library(cluster)
+library(viridis)
+library(PMCMRplus)
+library(data.table)
 
 # Import data----
 
@@ -230,7 +232,7 @@ summary(abs(df_errors$error))
 quantile(abs(df_errors$error), probs=seq(0,1,0.02))
 # 98% corrisponde a 437.91
 
-# definiscon come outliers le osservazioni che hanno un errore associato maggiore di 500 in valore assoluto
+# definiscon come outliers le osservazioni che hanno un errore associato maggiore di 437.91
 table_tbats_2 <- data_u1_day[which(abs(as.numeric(df_errors$error)) > 437.91), c("data","KWh")]
 dates_tbats_2 <- table_tbats_2$data
 
@@ -260,7 +262,6 @@ df$fitted <- fitted
 df$residuals <- mod_tbats_ms1$errors
 
 # il metodo è costruito considerando un upper bound per il numero di outliers che ci si aspetta (corrisponde a numero trovato nel metodo dei quantili)
-library(PMCMRplus)
 
 #2
 gesd <- gesdTest(df$residuals, 21)
@@ -380,7 +381,7 @@ for (i in 1:nrow(data_u1_day_center)) {
 data_u1_day_center = cbind(data_u1_day_center, center = x)
 
 
-data_u1_day_center$dist = apply(data_u1_day_center[,c(2,7)], 1, dist)
+data_u1_day_center$dist = apply(data_u1_day_center[,c(2,6)], 1, dist)
 
 temp = data_u1_day_center %>%
   arrange(desc(dist))
@@ -400,10 +401,10 @@ outlier_fraction = 0.1
 temp_10 = temp[1:round(nrow(temp)*outlier_fraction),]
 nrow(temp_10)
 
-
+# prova con temp 5
 ggplot()+
   geom_line(data = data_u1_day, aes(x = as.Date(data), y = KWh), size = 0.7)+
-  geom_point(data = temp2, aes(x = as.Date(data), y = KWh), color = 'red')+
+  geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red')+
   theme_classic()+
   scale_x_date(breaks=breaks_width("6 month"),
                labels=date_format("%b %y"))+
@@ -439,4 +440,39 @@ table_dates10
 
 # aggiungere grafico finale
 
+# 2%, seleziono prima quelli con valore maggiore di 0.4
+datatable2 <- as.data.table(table_dates2)
+datatable2 <- datatable2[which(datatable2$N>=0.4),]
 
+ggplot(datatable2, aes(x=N*100, y= date_vec2, fill=N*100)) +
+  geom_histogram(stat="identity") +
+  xlab("Frequency (%)") + 
+  ylab("Dates") +
+  labs(fill = "Outliers in methods (%)") +
+  scale_fill_viridis(limits = c(30, 100), direction=-1)
+
+
+# 5%, seleziono prima quelli con valore maggiore di 0.5
+datatable5 <- as.data.table(table_dates5)
+datatable5 <- datatable5[which(datatable5$N>=0.5),]
+
+ggplot(datatable5, aes(x=N*100, y= date_vec5, fill=N*100)) +
+  geom_histogram(stat="identity") +
+  xlab("Frequency (%)") + 
+  ylab("Dates") +
+  labs(fill = "Outliers in methods (%)") +
+  scale_fill_viridis(limits = c(30, 100), direction=-1)
+
+
+# 10%, seleziono prima quelli con valore maggiore di 0.5
+datatable10 <- as.data.table(table_dates10)
+datatable10 <- datatable10[which(datatable10$N>=0.5),]
+
+ggplot(datatable10, aes(x=N*100, y= date_vec10, fill=N*100)) +
+  geom_histogram(stat="identity") +
+  xlab("Frequency (%)") + 
+  ylab("Dates") +
+  labs(fill = "Outliers in methods (%)") +
+  scale_fill_viridis(limits = c(30, 100), direction=-1)
+
+# terrei il 5% dei dati come outliers
