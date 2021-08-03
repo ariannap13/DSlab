@@ -23,32 +23,28 @@ library(cluster)
 library(viridis)
 library(PMCMRplus)
 library(data.table)
-library(scales)
 
-
-# Import data----
+# Import data ----
 
 setwd("/Users/Ary/Documents/Data_Science/1st_year/DSLab/Progetto/Dati Energia (2)")
 u6 = read.csv('u6.csv')
-
 
 # Pre - processing ----
 data_u6 = data.frame(data = as.Date(substr(u6$DATA, 1, 10), tryFormats =  "%Y%m%d"))
 data_u6$KWh = as.numeric(gsub(',','.',u6$CONSUMO_ATTIVA_PRELEVATA))*.25
 data_u6$ora = u6$ORA
 
-# creo colonna ora_bis, trasformando in formato orario più comprensibile
+## colonna ora_bis, trasformando in formato orario più comprensibile
 data_u6$ora_bis <- data_u6$ora/100
 data_u6$ora_bis <- format(strptime(substr(as.POSIXct(sprintf("%04.0f", data_u6$ora_bis), 
                                                      format="%H%M"), 12, 16),'%H:%M'),'%H:%M:%S')
 
-# Aggregazione ----
-# by day
+## Aggregazione by day
 data_u6_day = data_u6 %>%
   group_by(data) %>%
   summarise(KWh = sum(KWh))
 
-# mostro sovrapposizione giugno 2020 con u1
+## mostro sovrapposizione giugno 2020 con u1
 
 colors <- c("U1" = "deeppink4", "U6" = "darkorange2")
 
@@ -63,11 +59,12 @@ ggplot() +
                                labels = date_format("%b"))
 
 
-# filtering per togliere da giugno 2020
+## filtering per togliere da giugno 2020
 data_u6_day <- filter(data_u6_day, data < as.Date("2020-06-01"))
 
 
-# studio della stagionalità
+
+## studio della stagionalità
 
 u6_ts <- ts(data_u6_day$KWh, frequency=365, start=c(2018,1,1))
 stl <- decompose(u6_ts)
@@ -106,9 +103,9 @@ u6_msts3 %>% mstl() %>%
 mod_tbats_ms3 <- tbats(u6_msts3)
 mod_tbats_ms3 #AIC = 15809.85
 
-# Dai risultati osservati, sembrerebbe esserci una stagionalità multipla settimanale+annuale
+" Dai risultati osservati, sembrerebbe esserci una stagionalità multipla settimanale+annuale
 
-# E' più importante stagionalità annuale o settimanale? Confronto modelli con stagionalità singola
+ E' più importante stagionalità annuale o settimanale? Confronto modelli con stagionalità singola"
 
 # modello con stagionalità singola - settimana
 u6_ts_w <- ts(data_u6_day$KWh, frequency=7, start=c(2018,1,1))
@@ -123,16 +120,13 @@ mod_tbats_ts_m <- tbats(u6_ts_m)
 mod_tbats_ts_m #AIC = 16440.06
 
 
-### aggiungere parte analisi esplorativa (studio dei residui + acf/pacf)
+## aggiungere parte analisi esplorativa (studio dei residui + acf/pacf)
 
+# Anomaly Detection ----
 
+## APPROCCIO STL ----
 
-
-
-
-### APPROCCIO STL
-
-# prova anomaly detection, dal sito https://www.analyticsvidhya.com/blog/2020/12/a-case-study-to-detect-anomalies-in-time-series-using-anomalize-package-in-r/
+" prova anomaly detection, dal sito https://www.analyticsvidhya.com/blog/2020/12/a-case-study-to-detect-anomalies-in-time-series-using-anomalize-package-in-r/
 
 # il pacchetto anomalize nella funzione time_decompose accetta due metodi:
 #   * STL --> lavora bene con trend a lungo termine, ma performa meno bene 
@@ -140,7 +134,7 @@ mod_tbats_ts_m #AIC = 16440.06
 #   * twitter --> differenza con stl nella rimozione del trend, che viene qui
 #                 trattato rimuovendo la mediana dei dati invece che facendo il
 #                 fitting di uno smoother. Lavora meglio quando la componente
-#                 stagionale è preponderante.
+#                 stagionale è preponderante."
 
 
 data_u6_day <- as_tibble(data_u6_day)
@@ -211,26 +205,26 @@ p5 <- data_u6_day %>%
   ggtitle("alpha = 0.09, max_anoms=30%")
 p5
 
-# con alpha=0.07, intervalli di normalità più ampi
+# con alpha=0.05, intervalli di normalità più ampi
 p6 <- data_u6_day %>%
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
-  anomalize(remainder, alpha = 0.07, max_anoms = 0.3) %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.3) %>%
   time_recompose() %>%
   plot_anomalies(time_recomposed = TRUE) +
-  ggtitle("alpha = 0.07, max_anoms=30%")
+  ggtitle("alpha = 0.05")
 p6
 
-# tabella con date outliers (riferimento alpha=0.07)
+# tabella con date outliers (riferimento alpha=0.05)
 table1 <- data_u6_day %>% 
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
-  anomalize(remainder, alpha = 0.07, max_anoms = 0.3) %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.3) %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
 # date identificate come giorni anomali
 dates_anomalize <- table1$data
 
 
-### APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza ----
+## APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza ----
 
 # considero multistagionalità settimanale e annuale
 mod_tbats_ms1 <- tbats(u6_msts1)
@@ -241,6 +235,11 @@ fitted <- mod_tbats_ms1$fitted.values
 #create data frame with date and KWh for ets model
 df <- data.frame(data = data_u6_day$data)
 df$KWh <- fitted
+
+# confronto
+data_cf <- data.frame(data = data_u6_day$data)
+data_cf$real <- data_u6_day$KWh
+data_cf$fitted <- df$KWh
 
 colors <- c("Fitted values" = "blue", "Real values" = "darkorange1")
 
@@ -275,6 +274,9 @@ quantile(abs(df_errors$error), probs=seq(0,1,0.05))
 table_tbats_5 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 550.42), c("data","KWh")]
 dates_tbats_5 <- table_tbats_5$data
 
+prova <- data_u6_day[which(as.numeric(df_errors$error) > 550.42), c("data","KWh")]
+
+
 # voglio selezionare come ouliers solo il 10% dei dati
 
 summary(abs(df_errors$error))
@@ -291,8 +293,9 @@ df$fitted <- fitted
 df$residuals <- mod_tbats_ms1$errors
 
 # il metodo è costruito considerando un upper bound per il numero di outliers che ci si aspetta (corrisponde a numero trovato nel metodo dei quantili)
+# valore max = n. ottenuto con metodo quantili
 
-#2
+#2%
 gesd <- gesdTest(df$residuals, 18)
 num_oss <- gesd$ix
 data_u6_day[num_oss,]
@@ -301,7 +304,7 @@ table_tbats_test_2 <- data_u6_day[num_oss,]
 dates_tbats_test_2 <- table_tbats_test_2$data
 
 
-#5
+#5%
 gesd <- gesdTest(df$residuals, 45)
 num_oss <- gesd$ix
 data_u6_day[num_oss,]
@@ -310,7 +313,7 @@ table_tbats_test_5 <- data_u6_day[num_oss,]
 dates_tbats_test_5 <- table_tbats_test_5$data
 
 
-#10
+#10%
 gesd <- gesdTest(df$residuals, 89)
 num_oss <- gesd$ix
 data_u6_day[num_oss,]
@@ -318,7 +321,7 @@ data_u6_day[num_oss,]
 table_tbats_test_10 <- data_u6_day[num_oss,]
 dates_tbats_test_10 <- table_tbats_test_10$data
 
-### APPROCCIO CART
+## APPROCCIO CART ----
 
 # algoritmo isolation forest (decision trees), non usa misure di distanza o densità 
 # ma considera solo il fatto che le anomalie sono solitamente poche e abbastanza diverse 
@@ -346,7 +349,7 @@ table_out_cart <- data_u6_day[which(data_u6_day$outlier=="outlier"),]
 dates_cart <- table_out_cart$data
 
 
-### APPROCCIO K-MEANS ----
+## APPROCCIO K-MEANS ----
 
 
 set.seed(123)
@@ -383,9 +386,9 @@ sil_plot = ggplot(data = df, aes(y = sil, x = k))+
   scale_y_continuous(name = "Average Silhouettes")+
   labs(title = 'Optimal number of clusters', subtitle = 'Silhouette method')
 
-grid.arrange(el_plot,sil_plot, nrow =1) # 3 cluster
+grid.arrange(el_plot,sil_plot, nrow =1) # 8 cluster
 
-cluster = kmeans(as.data.frame(data_u6_day)[,2], 3)
+cluster = kmeans(as.data.frame(data_u6_day)[,2], 8)
 data_u6_day_center = cbind(as.data.frame(data_u6_day), cluster = cluster$cluster)
 
 
@@ -397,6 +400,16 @@ for (i in 1:nrow(data_u6_day_center)) {
     x[i] = cluster$centers[2]
   } else if (data_u6_day_center[i,5] == 3) {
     x[i] = cluster$centers[3]
+  } else if (data_u6_day_center[i,5] == 4) {
+    x[i] = cluster$centers[4]
+  } else if (data_u6_day_center[i,5] == 5) {
+    x[i] = cluster$centers[5]
+  } else if (data_u6_day_center[i,5] == 6) {
+    x[i] = cluster$centers[6]
+  } else if (data_u6_day_center[i,5] == 7) {
+    x[i] = cluster$centers[7]
+  } else if (data_u6_day_center[i,5] == 8) {
+    x[i] = cluster$centers[8]
   } 
 }
 
@@ -409,6 +422,8 @@ data_u6_day_center$dist = apply(data_u6_day_center[,c(2,6)], 1, dist)
 
 temp = data_u6_day_center %>%
   arrange(desc(dist))
+
+# definizione frazione di outliers sul totale da considerare
 
 # 0.02
 outlier_fraction = 0.02
@@ -425,7 +440,7 @@ outlier_fraction = 0.1
 temp_10 = temp[1:round(nrow(temp)*outlier_fraction),]
 nrow(temp_10)
 
-# prova con temp 5
+# esempio con temp 5
 ggplot()+
   geom_line(data = data_u6_day, aes(x = as.Date(data), y = KWh), size = 0.7)+
   geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red')+
@@ -441,28 +456,28 @@ dates_kmeans_2 <- temp_2$data
 dates_kmeans_5 <- temp_5$data
 dates_kmeans_10 <- temp_10$data
 
-# compare anomalies (daily data)
+# Comparison ----
 
-#2
+# top 2%
 date_vec2 <- c(dates_anomalize,dates_tbats_2,dates_tbats_test_2,dates_cart,dates_kmeans_2)
 table_dates2 <- table(date_vec2)/5
 length(which(table_dates2>=0.4))
 table_dates2
 
-#5
+# top 5%
 date_vec5 <- c(dates_anomalize,dates_tbats_5,dates_tbats_test_5,dates_cart,dates_kmeans_5)
 table_dates5 <- table(date_vec5)/5
 length(which(table_dates5>=0.4))
 table_dates5
 
-#10
+# top 10%
 date_vec10 <- c(dates_anomalize,dates_tbats_10,dates_tbats_test_10,dates_cart,dates_kmeans_10)
 table_dates10 <- table(date_vec10)/5
 length(which(table_dates10>=0.4))
 table_dates10
 
 
-# aggiungere grafico finale
+# grafico finale
 
 # 2%, seleziono prima quelli con valore maggiore di 0.4
 datatable2 <- as.data.table(table_dates2)
@@ -476,7 +491,7 @@ ggplot(datatable2, aes(x=N*100, y= date_vec2, fill=N*100)) +
   scale_fill_viridis(limits = c(30, 100), direction=-1)
 
 
-# 5%, seleziono prima quelli con valore maggiore di 0.5
+# 5%, seleziono prima quelli con valore maggiore di 0.5, a scopo di miglior visualizzazione
 datatable5 <- as.data.table(table_dates5)
 datatable5 <- datatable5[which(datatable5$N>=0.5),]
 
@@ -488,7 +503,7 @@ ggplot(datatable5, aes(x=N*100, y= date_vec5, fill=N*100)) +
   scale_fill_viridis(limits = c(30, 100), direction=-1)
 
 
-# 10%, seleziono prima quelli con valore maggiore di 0.5
+# 10%, seleziono prima quelli con valore maggiore di 0.5, a scopo di miglior visualizzazione
 datatable10 <- as.data.table(table_dates10)
 datatable10 <- datatable10[which(datatable10$N>=0.5),]
 
@@ -500,4 +515,18 @@ ggplot(datatable10, aes(x=N*100, y= date_vec10, fill=N*100)) +
   scale_fill_viridis(limits = c(30, 100), direction=-1)
 
 
-# terrei il 5% dei dati come outliers
+# Comparison U1-U6 ----
+
+#5%
+table_dates5_u6 <- table_dates5
+table_u6 <- as.data.table(table_dates5_u6)
+table_u6 <- table_u6[which(table_u6$N>=0.4),]
+table_u1 <- as.data.table(table_dates5_u1)
+table_u1 <- table_u1[which(table_u1$N>=0.4),]
+
+date_tot <- c(table_u1$date_vec5,table_u6$date_vec5)
+table_dates_tot <- as.data.table(table(date_tot)/2)
+
+# giorni in comune
+table_dates_tot[which(table_dates_tot$N==1.0),]
+
