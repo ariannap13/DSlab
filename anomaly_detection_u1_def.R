@@ -103,7 +103,12 @@ mod_tbats_ts_m #AIC = 19242.76
 
 ## aggiungere parte analisi esplorativa (studio dei residui + acf/pacf)
 
+acf(resid(mod_tbats_ms1), lag.max = 1000)
+pacf(resid(mod_tbats_ms1), lag.max = 1000)
+# non sembrano esserci situazioni particolarmente problematiche a livello di autocorrelazione
 
+checkresiduals(mod_tbats_ms1) # grande p-value per ljung-box test: i residui non possono essere considerati come diversi da una serie white noise
+# i residui non sono esattamente normali ma la condizione di non normalità non è estrema
 
 # Anomaly Detection ----
 
@@ -245,7 +250,7 @@ summary(abs(df_errors$error))
 quantile(abs(df_errors$error), probs=seq(0,1,0.02))
 # 98% corrisponde a 417.79
 
-# definiscon come outliers le osservazioni che hanno un errore associato maggiore di 437.91
+# definiscon come outliers le osservazioni che hanno un errore associato maggiore di 417.79
 table_tbats_2 <- data_u1_day[which(abs(as.numeric(df_errors$error)) > 417.79), c("data","KWh")]
 dates_tbats_2 <- table_tbats_2$data
 
@@ -259,7 +264,7 @@ quantile(abs(df_errors$error), probs=seq(0,1,0.05))
 table_tbats_5 <- data_u1_day[which(abs(as.numeric(df_errors$error)) > 291.05), c("data","KWh")]
 dates_tbats_5 <- table_tbats_5$data
 
-data_u1_day[which(as.numeric(df_errors$error) > 291.05), c("data","KWh")]
+trial <- data_u1_day[which(as.numeric(df_errors$error) > 291.05), c("data","KWh")]
 
 # voglio selezionare come ouliers solo il 10% dei dati
 
@@ -294,8 +299,6 @@ num_oss <- gesd$ix
 data_u1_day[num_oss,]
 # tabella con outliers
 table_tbats_test_5 <- data_u1_day[num_oss,]
-
-
 dates_tbats_test_5 <- table_tbats_test_5$data
 
 

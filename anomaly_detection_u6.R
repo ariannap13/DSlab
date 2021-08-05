@@ -103,24 +103,35 @@ u6_msts3 %>% mstl() %>%
 mod_tbats_ms3 <- tbats(u6_msts3)
 mod_tbats_ms3 #AIC = 15809.85
 
-" Dai risultati osservati, sembrerebbe esserci una stagionalità multipla settimanale+annuale
-
- E' più importante stagionalità annuale o settimanale? Confronto modelli con stagionalità singola"
 
 # modello con stagionalità singola - settimana
 u6_ts_w <- ts(data_u6_day$KWh, frequency=7, start=c(2018,1,1))
 mod_tbats_ts_w <- tbats(u6_ts_w)
 mod_tbats_ts_w # settimana AIC = 15797.05
 mod_tbats # anno AIC = 16446.53
-# stagionalità settimanale ha AIC più basso --> più importante
 
 # modello con stagionalità singola - mese
 u6_ts_m <- ts(data_u6_day$KWh, frequency=30, start=c(2018,1,1))
 mod_tbats_ts_m <- tbats(u6_ts_m)
 mod_tbats_ts_m #AIC = 16440.06
 
+" Dai risultati osservati, sembrerebbe esserci una stagionalità settimanale.
+  Si sceglie di realizzare il fitting di un modello arima che deduca in automatico
+  la componente stagionale."
 
-## aggiungere parte analisi esplorativa (studio dei residui + acf/pacf)
+# modello arima
+
+model_arima <- auto.arima(u6_ts_w)
+model_arima #viene indicata la stagionalità settimanale (complessivamente, si ha un modello sarima)
+
+## analisi esplorativa (studio dei residui + acf/pacf)
+
+acf(resid(model_arima), lag.max = 1000)
+pacf(resid(model_arima), lag.max = 1000)
+# la situazione a livello di autocorrelazione non appare particolarmente problematica
+
+checkresiduals(model_arima) # grande p-value per ljung-box test: i residui non possono essere considerati come diversi da una serie white noise
+# i residui non sono esattamente normali ma la condizione di non normalità non è estrema
 
 # Anomaly Detection ----
 
@@ -224,13 +235,11 @@ table1 <- data_u6_day %>%
 dates_anomalize <- table1$data
 
 
-## APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza ----
+## APPROCCIO SARIMA, stagionalità settimanale ----
 
-# considero multistagionalità settimanale e annuale
-mod_tbats_ms1 <- tbats(u6_msts1)
-mod_tbats_ms1
+model_arima
 
-fitted <- mod_tbats_ms1$fitted.values
+fitted <- model_arima$fitted
 
 #create data frame with date and KWh for ets model
 df <- data.frame(data = data_u6_day$data)
@@ -252,45 +261,45 @@ ggplot() +
   scale_color_manual(values = colors)
 
 df_errors <- data.frame(data = data_u6_day$data)
-df_errors$error <- mod_tbats_ms1$errors
+df_errors$error <- model_arima$residuals
 
 # voglio selezionare come ouliers solo il 2% dei dati
 
 summary(abs(df_errors$error))
 quantile(abs(df_errors$error), probs=seq(0,1,0.02))
-# 98% corrisponde a 724.79
+# 98% corrisponde a 716.46
 
-# definisco come outliers le osservazioni che hanno un errore associato maggiore di 724.79 
-table_tbats_2 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 724.79), c("data","KWh")]
-dates_tbats_2 <- table_tbats_2$data
+# definisco come outliers le osservazioni che hanno un errore associato maggiore di 716.46
+table_sarima_2 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 716.46), c("data","KWh")]
+dates_sarima_2 <- table_sarima_2$data
 
 
 # voglio selezionare come ouliers solo il 5% dei dati
 
 summary(abs(df_errors$error))
 quantile(abs(df_errors$error), probs=seq(0,1,0.05))
-# 95% corrisponde a 550.42
+# 95% corrisponde a 500.58
 
-table_tbats_5 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 550.42), c("data","KWh")]
-dates_tbats_5 <- table_tbats_5$data
+table_sarima_5 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 500.58), c("data","KWh")]
+dates_sarima_5 <- table_sarima_5$data
 
-prova <- data_u6_day[which(as.numeric(df_errors$error) > 550.42), c("data","KWh")]
+prova <- data_u6_day[which(as.numeric(df_errors$error) > 500.58), c("data","KWh")]
 
 
 # voglio selezionare come ouliers solo il 10% dei dati
 
 summary(abs(df_errors$error))
 quantile(abs(df_errors$error), probs=seq(0,1,0.1))
-# 90% corrisponde a 404.43
+# 90% corrisponde a 292.57
 
-table_tbats_10 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 404.43), c("data","KWh")]
-dates_tbats_10 <- table_tbats_10$data
+table_sarima_10 <- data_u6_day[which(abs(as.numeric(df_errors$error)) > 292.57), c("data","KWh")]
+dates_sarima_10 <- table_sarima_10$data
 
 # metodo generalized extreme Studentized deviate test per identificare outliers
 df <- data.frame(data = data_u6_day$data)
 df$observed <- data_u6_day$KWh
 df$fitted <- fitted
-df$residuals <- mod_tbats_ms1$errors
+df$residuals <- model_arima$residuals
 
 # il metodo è costruito considerando un upper bound per il numero di outliers che ci si aspetta (corrisponde a numero trovato nel metodo dei quantili)
 # valore max = n. ottenuto con metodo quantili
@@ -300,8 +309,8 @@ gesd <- gesdTest(df$residuals, 18)
 num_oss <- gesd$ix
 data_u6_day[num_oss,]
 # tabella con outliers
-table_tbats_test_2 <- data_u6_day[num_oss,]
-dates_tbats_test_2 <- table_tbats_test_2$data
+table_sarima_test_2 <- data_u6_day[num_oss,]
+dates_sarima_test_2 <- table_sarima_test_2$data
 
 
 #5%
@@ -309,8 +318,8 @@ gesd <- gesdTest(df$residuals, 45)
 num_oss <- gesd$ix
 data_u6_day[num_oss,]
 # tabella con outliers
-table_tbats_test_5 <- data_u6_day[num_oss,]
-dates_tbats_test_5 <- table_tbats_test_5$data
+table_sarima_test_5 <- data_u6_day[num_oss,]
+dates_sarima_test_5 <- table_sarima_test_5$data
 
 
 #10%
@@ -318,8 +327,8 @@ gesd <- gesdTest(df$residuals, 89)
 num_oss <- gesd$ix
 data_u6_day[num_oss,]
 # tabella con outliers
-table_tbats_test_10 <- data_u6_day[num_oss,]
-dates_tbats_test_10 <- table_tbats_test_10$data
+table_sarima_test_10 <- data_u6_day[num_oss,]
+dates_sarima_test_10 <- table_sarima_test_10$data
 
 ## APPROCCIO CART ----
 
@@ -386,9 +395,9 @@ sil_plot = ggplot(data = df, aes(y = sil, x = k))+
   scale_y_continuous(name = "Average Silhouettes")+
   labs(title = 'Optimal number of clusters', subtitle = 'Silhouette method')
 
-grid.arrange(el_plot,sil_plot, nrow =1) # 8 cluster
+grid.arrange(el_plot,sil_plot, nrow =1) # 3 cluster
 
-cluster = kmeans(as.data.frame(data_u6_day)[,2], 8)
+cluster = kmeans(as.data.frame(data_u6_day)[,2], 3)
 data_u6_day_center = cbind(as.data.frame(data_u6_day), cluster = cluster$cluster)
 
 
@@ -400,16 +409,6 @@ for (i in 1:nrow(data_u6_day_center)) {
     x[i] = cluster$centers[2]
   } else if (data_u6_day_center[i,5] == 3) {
     x[i] = cluster$centers[3]
-  } else if (data_u6_day_center[i,5] == 4) {
-    x[i] = cluster$centers[4]
-  } else if (data_u6_day_center[i,5] == 5) {
-    x[i] = cluster$centers[5]
-  } else if (data_u6_day_center[i,5] == 6) {
-    x[i] = cluster$centers[6]
-  } else if (data_u6_day_center[i,5] == 7) {
-    x[i] = cluster$centers[7]
-  } else if (data_u6_day_center[i,5] == 8) {
-    x[i] = cluster$centers[8]
   } 
 }
 
@@ -459,19 +458,19 @@ dates_kmeans_10 <- temp_10$data
 # Comparison ----
 
 # top 2%
-date_vec2 <- c(dates_anomalize,dates_tbats_2,dates_tbats_test_2,dates_cart,dates_kmeans_2)
+date_vec2 <- c(dates_anomalize,dates_sarima_2,dates_sarima_test_2,dates_cart,dates_kmeans_2)
 table_dates2 <- table(date_vec2)/5
 length(which(table_dates2>=0.4))
 table_dates2
 
 # top 5%
-date_vec5 <- c(dates_anomalize,dates_tbats_5,dates_tbats_test_5,dates_cart,dates_kmeans_5)
+date_vec5 <- c(dates_anomalize,dates_sarima_5,dates_sarima_test_5,dates_cart,dates_kmeans_5)
 table_dates5 <- table(date_vec5)/5
 length(which(table_dates5>=0.4))
 table_dates5
 
 # top 10%
-date_vec10 <- c(dates_anomalize,dates_tbats_10,dates_tbats_test_10,dates_cart,dates_kmeans_10)
+date_vec10 <- c(dates_anomalize,dates_sarima_10,dates_sarima_test_10,dates_cart,dates_kmeans_10)
 table_dates10 <- table(date_vec10)/5
 length(which(table_dates10>=0.4))
 table_dates10
