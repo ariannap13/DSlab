@@ -184,6 +184,14 @@ p4 <- data_u1_day %>%
   ggtitle("alpha = 0.05")
 p4
 
+p41 <- data_u1_day %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.30, method='gesd') %>%
+  time_recompose() %>%
+  plot_anomalies(time_recomposed = TRUE) +
+  ggtitle("alpha = 0.05")
+p41
+
 # con alpha=0.1, intervalli di normalità più stretti
 p5 <- data_u1_day %>%
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
@@ -205,10 +213,10 @@ p6
 # tabella con date outliers (riferimento alpha=0.05)
 table1 <- data_u1_day %>% 
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
-  anomalize(remainder, alpha = 0.05, max_anoms = 0.3) %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.3, method="gesd") %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
-# date identificate come giorni anomali
+# date identificate come giorni anomali, 29
 dates_anomalize <- table1$data
 
 ## APPROCCIO TBATS - generalizzazione modello ETS che riesce e gestire dati ad alta frequenza ----

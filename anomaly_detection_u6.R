@@ -176,7 +176,6 @@ table <- data_u6_day %>%
   anomalize(remainder) %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
-# 9 anomalie
 
 # metodo stl --> prova anche se sembra più adatto metodo twitter
 df_anomalized1 <- data_u6_day %>%
@@ -207,6 +206,7 @@ p4 <- data_u6_day %>%
   ggtitle("alpha = 0.3, max_anoms=5%")
 p4
 
+
 # con alpha=0.09, intervalli di normalità più stretti
 p5 <- data_u6_day %>%
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
@@ -225,13 +225,22 @@ p6 <- data_u6_day %>%
   ggtitle("alpha = 0.05")
 p6
 
+# con alpha=0.05, intervalli di normalità più ampi
+p61 <- data_u6_day %>%
+  time_decompose(KWh, method="twitter", frequency="1 week") %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.3, method="gesd") %>%
+  time_recompose() %>%
+  plot_anomalies(time_recomposed = TRUE) +
+  ggtitle("alpha = 0.05")
+p61
+
 # tabella con date outliers (riferimento alpha=0.05)
 table1 <- data_u6_day %>% 
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
-  anomalize(remainder, alpha = 0.05, max_anoms = 0.3) %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.3, method="gesd") %>%
   time_recompose() %>%
   filter(anomaly == 'Yes')
-# date identificate come giorni anomali
+# date identificate come giorni anomali, 26
 dates_anomalize <- table1$data
 
 
