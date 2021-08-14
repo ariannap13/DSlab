@@ -12,7 +12,7 @@ Files contenuti nella repository:
 * anomaly_detection_u6.R: preprocessing e anomaly detection per serie storica U6
 
 
-LINK UTILI:
+LINK UTILI (da eliminare):
 * Diversi metodi anomaly detection in R: https://blog.statsbot.co/time-series-anomaly-detection-algorithms-1cef5519aef2
 * Diversi metodi anomaly detection in Python (simile al primo ma alcune cose sono spiegate meglio): https://neptune.ai/blog/anomaly-detection-in-time-series
 * Outliers detection con algo isolation forest (CART): https://www.kaggle.com/norealityshows/outlier-detection-with-isolation-forest-in-r
