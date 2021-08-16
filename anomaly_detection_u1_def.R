@@ -104,8 +104,10 @@ mod_tbats_ts_m #AIC = 19242.76
 
 ## studio dei residui del modello TBATS selezionato
 
-acf(resid(mod_tbats_ms1), lag.max = 1000)
-pacf(resid(mod_tbats_ms1), lag.max = 1000)
+AutoCorrelation <- acf(resid(mod_tbats_ms1), plot = FALSE)
+plot(AutoCorrelation, main=NaN)
+PartialAutoCorrelation <- pacf(resid(mod_tbats_ms1), plot = FALSE)
+plot(PartialAutoCorrelation, main=NaN)
 # non sembrano esserci situazioni particolarmente problematiche a livello di autocorrelazione
 
 checkresiduals(mod_tbats_ms1) # grande p-value per ljung-box test: i residui non possono essere 
