@@ -7,7 +7,7 @@ Autori:
 * Francesco Fustini, matr. 830697
 
 Files contenuti nella repository:
-* import_data.R: lettura, parte di analisi preliminare e creazione dei file di partenza per l'anomaly detection
+* import_dati.R: lettura, parte di analisi preliminare e creazione dei file di partenza per l'anomaly detection
 * anomaly_detection_u1_def.R: preprocessing e anomaly detection per serie storica U1
 * anomaly_detection_u6.R: preprocessing e anomaly detection per serie storica U6
 
