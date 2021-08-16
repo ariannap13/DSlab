@@ -124,8 +124,10 @@ model_arima # viene selezionato un modello SARIMA
 
 ## studio dei residui del modello SARIMA selezionato
 
-acf(resid(model_arima), lag.max = 1000)
-pacf(resid(model_arima), lag.max = 1000)
+AutoCorrelation <- acf(resid(model_arima), plot = FALSE)
+plot(AutoCorrelation, main=NaN)
+PartialAutoCorrelation <- pacf(resid(model_arima), plot = FALSE)
+plot(PartialAutoCorrelation, main=NaN)
 # la situazione a livello di autocorrelazione non appare particolarmente problematica
 
 checkresiduals(model_arima) # grande p-value per ljung-box test: i residui non possono essere considerati come diversi da una serie white noise
