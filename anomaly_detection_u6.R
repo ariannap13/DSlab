@@ -123,11 +123,10 @@ model_arima # viene selezionato un modello SARIMA
 # viene indicata la stagionalità settimanale 
 
 ## studio dei residui del modello SARIMA selezionato
-
 AutoCorrelation <- acf(resid(model_arima), plot = FALSE)
-plot(AutoCorrelation, main=NaN)
+plot(AutoCorrelation, main=NA)
 PartialAutoCorrelation <- pacf(resid(model_arima), plot = FALSE)
-plot(PartialAutoCorrelation, main=NaN)
+plot(PartialAutoCorrelation, main=NA)
 # la situazione a livello di autocorrelazione non appare particolarmente problematica
 
 checkresiduals(model_arima) # grande p-value per ljung-box test: i residui non possono essere considerati come diversi da una serie white noise
@@ -338,14 +337,14 @@ set.seed(123)
 # definizioni valori within sum of squares e silhouette values per un numero di k da 2 a 15
 wth = vector()
 sil = vector()
-kmax = 15
+kmax = 10
 for (k in 2:kmax) {
   km = kmeans(as.data.frame(data_u6_day)[,2], k)
   wth[k-1] = km$tot.withinss
   ss = silhouette(km$cluster, dist(as.data.frame(data_u6_day)[,2]))
   sil[k-1] = mean(ss[,3])
 }
-df = data.frame(k = 2:15, wth, sil)
+df = data.frame(k = 2:10, wth, sil)
 
 # grafico metodo elbow
 el_plot = ggplot(data = df, aes(y = wth, x = k))+
@@ -353,11 +352,11 @@ el_plot = ggplot(data = df, aes(y = wth, x = k))+
   geom_point()+
   theme_classic()+
   scale_x_continuous(name = "Number of clusters K",
-                     breaks = seq(2,15,1))+
+                     breaks = seq(2,10,1))+
   scale_y_continuous(name = "Total within-clusters sum of squares",
                      labels = comma,
                      breaks = seq(0,60000000,10000000))+
-  labs(title = 'Optimal number of clusters', subtitle = 'Elbow method')
+  labs(title = 'Elbow method')
 
 # grafico metodo silhouette
 sil_plot = ggplot(data = df, aes(y = sil, x = k))+
@@ -365,9 +364,9 @@ sil_plot = ggplot(data = df, aes(y = sil, x = k))+
   geom_point()+
   theme_classic()+
   scale_x_continuous(name = "Number of clusters K",
-                     breaks = seq(2,15,1))+
+                     breaks = seq(2,10,1))+
   scale_y_continuous(name = "Average Silhouettes")+
-  labs(title = 'Optimal number of clusters', subtitle = 'Silhouette method')
+  labs(title = 'Silhouette method')
 
 grid.arrange(el_plot,sil_plot, nrow =1) # 3 cluster
 
@@ -417,7 +416,7 @@ ggplot()+
   scale_x_date(breaks=breaks_width("6 month"),
                labels=date_format("%b %y"))+
   theme(axis.text.x=element_text(angle=50, vjust=.7))+
-  labs(title = 'Anomaly detection', subtitle = 'k-means method')+
+  #labs(title = 'Anomaly detection', subtitle = 'k-means method')+
   xlab(element_blank())+
   scale_y_continuous(breaks = seq(0,3000,500))
 
