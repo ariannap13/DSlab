@@ -51,11 +51,12 @@ ggplot() +
   geom_line(data = data_u1_day, aes(x = data, y = KWh, color = "U1")) +
   geom_line(data = data_u6_day, aes(x = data, y = KWh, color = "U6")) +
   labs(x = "date",
-       y = "KWh",
+       y = "kWh",
        color = "Legend") +
   scale_color_manual(values = colors) +
-  scale_x_date(breaks = date_breaks("months"),
-                               labels = date_format("%b"))
+  scale_x_date(breaks = date_breaks("6 months"),
+                               labels = date_format("%b %y")) +
+  theme_bw()
 
 
 ## filtering per togliere da giugno 2020
@@ -410,15 +411,17 @@ nrow(temp_10)
 
 # esempio plot anomalie con top 5%
 ggplot()+
-  geom_line(data = data_u6_day, aes(x = as.Date(data), y = KWh), size = 0.7)+
-  geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red')+
-  theme_classic()+
+  geom_line(data = data_u6_day, aes(x = as.Date(data), y = KWh), size = 0.7, color="gray65")+
+  geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red3')+
+  labs(x = "date",
+       y = "kWh") +
   scale_x_date(breaks=breaks_width("6 month"),
                labels=date_format("%b %y"))+
   theme(axis.text.x=element_text(angle=50, vjust=.7))+
-  #labs(title = 'Anomaly detection', subtitle = 'k-means method')+
   xlab(element_blank())+
-  scale_y_continuous(breaks = seq(0,3000,500))
+  scale_y_continuous(breaks = seq(0,6000,500)) +
+  theme_bw()
+
 
 # salvataggio dati
 dates_kmeans_2 <- temp_2$data

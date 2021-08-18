@@ -409,15 +409,16 @@ nrow(temp_10)
 
 # esempio plot anomalie con top 5%
 ggplot()+
-  geom_line(data = data_u1_day, aes(x = as.Date(data), y = KWh), size = 0.7)+
-  geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red')+
-  theme_classic()+
+  geom_line(data = data_u1_day, aes(x = as.Date(data), y = KWh), size = 0.7, color="gray65")+
+  geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red3')+
+  labs(x = "date",
+       y = "kWh") +
   scale_x_date(breaks=breaks_width("6 month"),
                labels=date_format("%b %y"))+
   theme(axis.text.x=element_text(angle=50, vjust=.7))+
-  #labs(title = 'Anomaly detection', subtitle = 'k-means method')+
   xlab(element_blank())+
-  scale_y_continuous(breaks = seq(0,3000,500))
+  scale_y_continuous(breaks = seq(0,3000,500)) +
+  theme_bw()
 
 # salvataggio dati
 dates_kmeans_2 <- temp_2$data
