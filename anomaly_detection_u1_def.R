@@ -356,10 +356,10 @@ el_plot = ggplot(data = df, aes(y = wth, x = k))+
   geom_point()+
   theme_classic()+
   scale_x_continuous(name = "Number of clusters K",
-                     breaks = seq(2,10,1))+
+                     breaks = seq(2,15,1))+
   scale_y_continuous(name = "Total within-clusters sum of squares",
                      labels = comma,
-                     breaks = seq(0,60000000,10000000))+
+                     breaks = seq(0,60000000000,10000000))+
   labs(title = 'Elbow method')
 
 # grafico metodo silhouette
@@ -368,7 +368,7 @@ sil_plot = ggplot(data = df, aes(y = sil, x = k))+
   geom_point()+
   theme_classic()+
   scale_x_continuous(name = "Number of clusters K",
-                     breaks = seq(2,10,1))+
+                     breaks = seq(2,15,1))+
   scale_y_continuous(name = "Average Silhouettes")+
   labs(title = 'Silhouette method')
 
