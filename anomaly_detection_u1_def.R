@@ -187,7 +187,7 @@ p41 <- data_u1_day %>%
   theme_bw()+
   theme(legend.position = 'bottom')+
   xlab('date')
-
+p41
 
 # prova con alpha=0.1, intervalli di normalità più stretti, GESD
 p5 <- data_u1_day %>%
@@ -229,7 +229,7 @@ df <- data.frame(data = data_u1_day$data)
 df$KWh <- fitted
 
 # rappresentazione grafica serie fitted vs real
-colors <- c("Fitted values" = "blue", "Real values" = "darkorange1")
+colors <- c("Fitted values" = "blue2", "Real values" = "darkorange1")
 ggplot() + 
   geom_line(data = data_u1_day, aes(x = data, y = KWh, color = "Real values")) +
   geom_line(data = df, aes(x = data, y = KWh, color = "Fitted values")) +
@@ -320,6 +320,7 @@ table(data_u1_day$outlier)
 
 # plot
 ggplot(data_u1_day, aes(x = data, y = KWh)) +
+  geom_line(color="gray81") +
   geom_point(shape = 20, alpha = 0.5, aes(color=outlier), size = 2) +
   labs(x = "date", y = "kWh") +
   labs(alpha = "", colour="Legend") +
@@ -356,7 +357,7 @@ el_plot = ggplot(data = df, aes(y = wth, x = k))+
   geom_point()+
   theme_classic()+
   scale_x_continuous(name = "Number of clusters K",
-                     breaks = seq(2,15,1))+
+                     breaks = seq(2,10,1))+
   scale_y_continuous(name = "Total within-clusters sum of squares",
                      labels = comma,
                      breaks = seq(0,60000000000,10000000))+
@@ -368,7 +369,7 @@ sil_plot = ggplot(data = df, aes(y = sil, x = k))+
   geom_point()+
   theme_classic()+
   scale_x_continuous(name = "Number of clusters K",
-                     breaks = seq(2,15,1))+
+                     breaks = seq(2,10,1))+
   scale_y_continuous(name = "Average Silhouettes")+
   labs(title = 'Silhouette method')
 
@@ -422,7 +423,10 @@ ggplot()+
   geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red3')+
   labs(x = "date",
        y = "kWh") +
+  scale_x_date(breaks=breaks_width("6 month"),
+               labels=date_format("%b %y"))+
   theme(axis.text.x=element_text(angle=50, vjust=.7))+
+  xlab(element_blank())+
   scale_y_continuous(breaks = seq(0,3000,500)) +
   theme_bw()
 
@@ -472,7 +476,8 @@ ggplot(datatable2, aes(x=N*100, y= date_vec2, fill=N*100)) +
   xlab("Frequency (%)") + 
   ylab("Dates") +
   labs(fill = "Outliers in methods (%)") +
-  scale_fill_viridis(limits = c(30, 100), direction=-1)
+  scale_fill_viridis(limits = c(30, 100), direction=-1)+
+  theme_bw()
 
 # 5%, seleziono come anomalie quelle riconosciute almeno dal 50% dei metodi
 datatable5 <- as.data.table(table_dates5)
@@ -483,7 +488,8 @@ ggplot(datatable5, aes(x=N*100, y= date_vec5, fill=N*100)) +
   xlab("Frequency (%)") + 
   ylab("Dates") +
   labs(fill = "Outliers in methods (%)") +
-  scale_fill_viridis(limits = c(30, 100), direction=-1)
+  scale_fill_viridis(limits = c(30, 100), direction=-1)+
+  theme_bw()
 
 
 # 10%, seleziono come anomalie quelle riconosciute almeno dal 50% dei metodi
@@ -492,8 +498,8 @@ datatable10 <- datatable10[which(datatable10$N>=0.5),]
 
 ggplot(datatable10, aes(x=N*100, y= date_vec10, fill=N*100)) +
   geom_histogram(stat="identity") +
-  xlab("frequency (%)") + 
-  ylab("date") +
-  labs(fill = "outliers in methods (%)") +
+  xlab("Frequency (%)") + 
+  ylab("Dates") +
+  labs(fill = "Outliers in methods (%)") +
   scale_fill_viridis(limits = c(30, 100), direction=-1)+
   theme_bw()

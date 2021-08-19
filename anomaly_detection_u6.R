@@ -2,23 +2,23 @@
 rm(list=ls())
 
 library(ggplot2)
-library(lmtest)
+# library(lmtest)
 library(forecast)
-library(lubridate)
+# library(lubridate)
 library(scales)
 library(gridExtra)
-library(car)
-library(suncalc)
+# library(car)
+# library(suncalc)
 library(tidyverse)
-library(tibbletime)
+# library(tibbletime)
 library(anomalize)
-library(timetk)
-library(dplyr)
-library(chron)
-library(seastests)
-library(EnvStats)
+# library(timetk)
+# library(dplyr)
+# library(chron)
+# library(seastests)
+# library(EnvStats)
 library(isotree)
-library(stats)
+# library(stats)
 library(cluster)
 library(viridis)
 library(PMCMRplus)
@@ -77,28 +77,32 @@ mod_tbats #AIC = 16446.53
 ### modello con stagionalità multipla - settimana, mese, anno
 u6_msts <- msts(data_u6_day$KWh, seasonal.periods=c(7,30,365))
 u6_msts %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw() 
 mod_tbats_ms <- tbats(u6_msts)
 mod_tbats_ms #AIC = 15822.21
 
 ### modello con stagionalità multipla - settimana, anno
 u6_msts1 <- msts(data_u6_day$KWh, seasonal.periods=c(7,365))
 u6_msts1 %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw()
 mod_tbats_ms1 <- tbats(u6_msts1)
 mod_tbats_ms1 #AIC = 15808.14
 
 ### modello con stagionalità multipla - mese, anno
 u6_msts2 <- msts(data_u6_day$KWh, seasonal.periods=c(30,365))
 u6_msts2 %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw()
 mod_tbats_ms2 <- tbats(u6_msts2)
 mod_tbats_ms2 #AIC = 16415.36
 
 ### modello con stagionalità multipla - settimana, mese
 u6_msts3 <- msts(data_u6_day$KWh, seasonal.periods=c(7,30))
 u6_msts3 %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw()
 mod_tbats_ms3 <- tbats(u6_msts3)
 mod_tbats_ms3 #AIC = 15809.85
 
@@ -193,10 +197,12 @@ p6
 # prova con alpha == 0.05, metodo detection GESD (GRAFICO DEFINITIVO)
 p61 <- data_u6_day %>%
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
-  anomalize(remainder, alpha = 0.05, max_anoms = 0.3, method="gesd") %>%
+  anomalize(remainder, alpha = 0.05, max_anoms = 0.30, method='gesd') %>%
   time_recompose() %>%
-  plot_anomalies(time_recomposed = TRUE) +
-  ggtitle("alpha = 0.05")
+  plot_anomalies(time_recomposed = T)+
+  theme_bw()+
+  theme(legend.position = 'bottom')+
+  xlab('date')
 p61
 
 # prova con alpha=0.09, metodo detection GESD
@@ -230,14 +236,16 @@ df <- data.frame(data = data_u6_day$data)
 df$KWh <- fitted
 
 # rappresentazione grafica serie fitted vs real
-colors <- c("Fitted values" = "blue", "Real values" = "darkorange1")
+colors <- c("Fitted values" = "blue2", "Real values" = "darkorange1")
 ggplot() + 
   geom_line(data = data_u6_day, aes(x = data, y = KWh, color = "Real values")) +
   geom_line(data = df, aes(x = data, y = KWh, color = "Fitted values")) +
   labs(x = "date",
-       y = "KWh",
+       y = "kWh",
        color = "Legend") +
-  scale_color_manual(values = colors)
+  scale_color_manual(values = colors)+
+  theme_bw()+
+  theme(legend.position = 'bottom')
 
 # dataframe contente i residui
 df_errors <- data.frame(data = data_u6_day$data)
@@ -318,12 +326,14 @@ data_u6_day$outlier <- as.factor(ifelse(data_u6_day$pred >= 0.6, "outlier", "nor
 table(data_u6_day$outlier)
 
 # plot
-d <- ggplot(data_u6_day, aes(x = data, y = KWh)) + 
-  geom_line(color="gray81")+
-  geom_point(shape = 20, alpha = 0.5, aes(color=outlier)) +
-  labs(x = "date", y = "KWh") +
-  labs(alpha = "", colour="Legend")
-d + scale_color_manual(values=c("gray81", "red3"))
+ggplot(data_u6_day, aes(x = data, y = KWh)) +
+  geom_line(color="gray81") +
+  geom_point(shape = 20, alpha = 0.5, aes(color=outlier), size = 2) +
+  labs(x = "date", y = "kWh") +
+  labs(alpha = "", colour="Legend") +
+  scale_color_manual(values=c("gray81", "red3"))+
+  theme_bw()+
+  theme(legend.position = 'bottom')
 
 # tabella e date outliers
 table_out_cart <- data_u6_day[which(data_u6_day$outlier=="outlier"),]
@@ -356,7 +366,7 @@ el_plot = ggplot(data = df, aes(y = wth, x = k))+
                      breaks = seq(2,10,1))+
   scale_y_continuous(name = "Total within-clusters sum of squares",
                      labels = comma,
-                     breaks = seq(0,60000000,10000000))+
+                     breaks = seq(0,60000000000,10000000))+
   labs(title = 'Elbow method')
 
 # grafico metodo silhouette
@@ -369,7 +379,7 @@ sil_plot = ggplot(data = df, aes(y = sil, x = k))+
   scale_y_continuous(name = "Average Silhouettes")+
   labs(title = 'Silhouette method')
 
-grid.arrange(el_plot,sil_plot, nrow =1) # 3 cluster
+grid.arrange(el_plot,sil_plot, nrow =1)
 
 # clusterizzazione definitiva e assegnazione centroide del cluster ad ogni osservazione
 cluster = kmeans(as.data.frame(data_u6_day)[,2], 3)
@@ -466,7 +476,8 @@ ggplot(datatable2, aes(x=N*100, y= date_vec2, fill=N*100)) +
   xlab("Frequency (%)") + 
   ylab("Dates") +
   labs(fill = "Outliers in methods (%)") +
-  scale_fill_viridis(limits = c(30, 100), direction=-1)
+  scale_fill_viridis(limits = c(30, 100), direction=-1) +
+  theme_bw()
 
 # 5%, seleziono come anomalie quelle riconosciute almeno dal 50% dei metodi
 datatable5 <- as.data.table(table_dates5)
@@ -477,7 +488,8 @@ ggplot(datatable5, aes(x=N*100, y= date_vec5, fill=N*100)) +
   xlab("Frequency (%)") + 
   ylab("Dates") +
   labs(fill = "Outliers in methods (%)") +
-  scale_fill_viridis(limits = c(30, 100), direction=-1)
+  scale_fill_viridis(limits = c(30, 100), direction=-1)+
+  theme_bw()
 
 # 10%, seleziono come anomalie quelle riconosciute almeno dal 50% dei metodi
 datatable10 <- as.data.table(table_dates10)
@@ -488,7 +500,8 @@ ggplot(datatable10, aes(x=N*100, y= date_vec10, fill=N*100)) +
   xlab("Frequency (%)") + 
   ylab("Dates") +
   labs(fill = "Outliers in methods (%)") +
-  scale_fill_viridis(limits = c(30, 100), direction=-1)
+  scale_fill_viridis(limits = c(30, 100), direction=-1)+
+  theme_bw()
 
 
 # Comparison U1-U6 ----
