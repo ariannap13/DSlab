@@ -423,13 +423,13 @@ nrow(temp_10)
 ggplot()+
   geom_line(data = data_u6_day, aes(x = as.Date(data), y = KWh), size = 0.7, color="gray65")+
   geom_point(data = temp_5, aes(x = as.Date(data), y = KWh), color = 'red3')+
-  labs(x = "date",
-       y = "kWh") +
-  scale_x_date(breaks=breaks_width("6 month"),
-               labels=date_format("%b %y"))+
-  theme(axis.text.x=element_text(angle=50, vjust=.7))+
+  scale_x_date(breaks=breaks_width("1 year"),
+               labels=date_format("%Y"))+
+  #theme(axis.text.x=element_text(angle=50, vjust=.7))+
   xlab(element_blank())+
   scale_y_continuous(breaks = seq(0,6000,500)) +
+  labs(x = "date",
+       y = "kWh") +
   theme_bw()
 
 
@@ -486,7 +486,7 @@ datatable5 <- datatable5[which(datatable5$N>=0.5),]
 ggplot(datatable5, aes(x=N*100, y= date_vec5, fill=N*100)) +
   geom_histogram(stat="identity") +
   xlab("Frequency (%)") + 
-  ylab("Dates") +
+  ylab("date") +
   labs(fill = "Outliers in methods (%)") +
   scale_fill_viridis(limits = c(30, 100), direction=-1)+
   theme_bw()
