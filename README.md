@@ -1,4 +1,4 @@
-# Anomaly Detection in Energy Consumption
+# Anomaly Detection in Electricity Consumption
 ## Progetto Data Science Lab 2020/2021
 
 Autori:
