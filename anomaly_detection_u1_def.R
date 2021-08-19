@@ -2,23 +2,23 @@
 rm(list=ls())
 
 library(ggplot2)
-library(lmtest)
+# library(lmtest)
 library(forecast)
-library(lubridate)
+# library(lubridate)
 library(scales)
 library(gridExtra)
-library(car)
-library(suncalc)
+# library(car)
+# library(suncalc)
 library(tidyverse)
-library(tibbletime)
+# library(tibbletime)
 library(anomalize)
-library(timetk)
-library(dplyr)
-library(chron)
-library(seastests)
-library(EnvStats)
+# library(timetk)
+# library(dplyr)
+# library(chron)
+# library(seastests)
+# library(EnvStats)
 library(isotree)
-library(stats)
+# library(stats)
 library(cluster)
 library(viridis)
 library(PMCMRplus)
@@ -59,28 +59,32 @@ mod_tbats # AIC = 19210.62
 ### modello con stagionalità multipla - settimana, mese, anno
 u1_msts <- msts(data_u1_day$KWh, seasonal.periods=c(7,30,365))
 u1_msts %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw() 
 mod_tbats_ms <- tbats(u1_msts)
 mod_tbats_ms #AIC = 19093.54
 
 ### modello con stagionalità multipla - settimana, anno
 u1_msts1 <- msts(data_u1_day$KWh, seasonal.periods=c(7,365))
 u1_msts1 %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw()
 mod_tbats_ms1 <- tbats(u1_msts1)
 mod_tbats_ms1 #AIC = 19066.69
 
 ### modello con stagionalità multipla - mese, anno
 u1_msts2 <- msts(data_u1_day$KWh, seasonal.periods=c(30,365))
 u1_msts2 %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw()
 mod_tbats_ms2 <- tbats(u1_msts2)
 mod_tbats_ms2 #AIC = 19224.81
 
 ### modello con stagionalità multipla - settimana, mese
 u1_msts3 <- msts(data_u1_day$KWh, seasonal.periods=c(7,30))
 u1_msts3 %>% mstl() %>%
-  autoplot() 
+  autoplot() +
+  theme_bw()
 mod_tbats_ms3 <- tbats(u1_msts3)
 mod_tbats_ms3 #AIC = 19106.92
 
@@ -179,9 +183,11 @@ p41 <- data_u1_day %>%
   time_decompose(KWh, method="twitter", frequency="1 week") %>%
   anomalize(remainder, alpha = 0.05, max_anoms = 0.30, method='gesd') %>%
   time_recompose() %>%
-  plot_anomalies(time_recomposed = TRUE) +
-  ggtitle("alpha = 0.05")
-p41
+  plot_anomalies(time_recomposed = T)+
+  theme_bw()+
+  theme(legend.position = 'bottom')+
+  xlab('date')
+
 
 # prova con alpha=0.1, intervalli di normalità più stretti, GESD
 p5 <- data_u1_day %>%
@@ -228,9 +234,11 @@ ggplot() +
   geom_line(data = data_u1_day, aes(x = data, y = KWh, color = "Real values")) +
   geom_line(data = df, aes(x = data, y = KWh, color = "Fitted values")) +
   labs(x = "date",
-       y = "KWh",
+       y = "kWh",
        color = "Legend") +
-  scale_color_manual(values = colors)
+  scale_color_manual(values = colors)+
+  theme_bw()+
+  theme(legend.position = 'bottom')
 
 # dataframe contente i residui
 df_errors <- data.frame(data = data_u1_day$data)
@@ -311,12 +319,13 @@ data_u1_day$outlier <- as.factor(ifelse(data_u1_day$pred >= 0.6, "outlier", "nor
 table(data_u1_day$outlier)
 
 # plot
-d <- ggplot(data_u1_day, aes(x = data, y = KWh)) + 
-  geom_line(color="gray81")+
-  geom_point(shape = 20, alpha = 0.5, aes(color=outlier)) +
-  labs(x = "date", y = "KWh") +
-  labs(alpha = "", colour="Legend")
-d + scale_color_manual(values=c("gray81", "red3"))
+ggplot(data_u1_day, aes(x = data, y = KWh)) +
+  geom_point(shape = 20, alpha = 0.5, aes(color=outlier), size = 2) +
+  labs(x = "date", y = "kWh") +
+  labs(alpha = "", colour="Legend") +
+  scale_color_manual(values=c("gray81", "red3"))+
+  theme_bw()+
+  theme(legend.position = 'bottom')
 
 # tabella e date outliers
 table_out_cart <- data_u1_day[which(data_u1_day$outlier=="outlier"),]
@@ -486,7 +495,8 @@ datatable10 <- datatable10[which(datatable10$N>=0.5),]
 
 ggplot(datatable10, aes(x=N*100, y= date_vec10, fill=N*100)) +
   geom_histogram(stat="identity") +
-  xlab("Frequency (%)") + 
-  ylab("Dates") +
-  labs(fill = "Outliers in methods (%)") +
-  scale_fill_viridis(limits = c(30, 100), direction=-1)
+  xlab("frequency (%)") + 
+  ylab("date") +
+  labs(fill = "outliers in methods (%)") +
+  scale_fill_viridis(limits = c(30, 100), direction=-1)+
+  theme_bw()
